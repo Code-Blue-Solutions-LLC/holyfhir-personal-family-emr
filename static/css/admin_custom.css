@@ -1,15 +1,172 @@
-/* Make Patients app full width */
-.app-patients {
-    width: 100% !important;
-    flex: 0 0 100% !important;
-    max-width: 100% !important;
+
+
+
+
+/* Keep admin autocomplete dropdowns visible even when they are empty. */
+.select2-container--admin-autocomplete .select2-selection,
+.select2-container--default .select2-selection {
+    background-color: #fff !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 6px !important;
+    min-height: 36px !important;
 }
 
-/* Optional: make others half width for cleaner layout */
-.app-clinical,
-.app-documents,
-.app-fhir,
-.app-auth {
-    flex: 0 0 50% !important;
-    max-width: 50% !important;
+.select2-container--admin-autocomplete .select2-selection--single,
+.select2-container--default .select2-selection--single {
+    align-items: center;
+    display: flex;
+}
+
+.select2-container--admin-autocomplete .select2-selection__rendered,
+.select2-container--default .select2-selection__rendered {
+    color: #111827 !important;
+    line-height: 34px !important;
+    padding-left: 10px !important;
+}
+
+.select2-container--admin-autocomplete .select2-selection__arrow,
+.select2-container--default .select2-selection__arrow {
+    height: 34px !important;
+    right: 8px !important;
+}
+
+.select2-container--admin-autocomplete.select2-container--focus .select2-selection,
+.select2-container--default.select2-container--focus .select2-selection,
+.select2-container--admin-autocomplete.select2-container--open .select2-selection,
+.select2-container--default.select2-container--open .select2-selection {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.18) !important;
+}
+
+.select2-dropdown {
+    border: 1px solid #9ca3af !important;
+}
+
+/* Make empty stacked inlines feel like an action area instead of a blank panel. */
+.inline-group .add-row,
+.djn-group .add-row {
+    background: #f8fafc !important;
+    border: 1px dashed #cbd5e1 !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    margin: 8px 0 0 !important;
+    min-height: 0 !important;
+    padding: 12px !important;
+}
+
+.inline-group .add-row a,
+.djn-group .add-row a {
+    align-items: center;
+    background: #fff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    color: #1d4ed8 !important;
+    display: inline-flex !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    padding: 8px 12px !important;
+    text-decoration: none !important;
+}
+
+.inline-group .add-row a:hover,
+.djn-group .add-row a:hover {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #1e40af !important;
+}
+
+.inline-group .module,
+.djn-group .module {
+    min-height: 0 !important;
+}
+
+.inline-group .delete,
+.djn-group .delete {
+    margin: 12px 0 4px !important;
+}
+
+.inline-group .delete a,
+.djn-group .delete a {
+    align-items: center;
+    background: #fff !important;
+    border: 1px solid #fecaca !important;
+    border-radius: 6px !important;
+    color: #b91c1c !important;
+    display: inline-flex !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    padding: 7px 11px !important;
+    text-decoration: none !important;
+}
+
+.inline-group .delete a:hover,
+.djn-group .delete a:hover {
+    background: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+    color: #991b1b !important;
+}
+
+.inline-group .inline-related,
+.djn-group .inline-related {
+    position: relative !important;
+}
+
+.inline-group .inline-deletelink,
+.djn-group .inline-deletelink {
+    align-items: center !important;
+    background: #dc2626 !important;
+    border: 1px solid #dc2626 !important;
+    border-radius: 6px !important;
+    color: #fff !important;
+    display: inline-flex !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 7px 11px !important;
+    position: absolute !important;
+    right: 14px !important;
+    text-decoration: none !important;
+    top: 13px !important;
+    z-index: 2 !important;
+}
+
+.inline-group .inline-deletelink::before,
+.djn-group .inline-deletelink::before {
+    color: #64748b !important;
+    content: "Changes save with the page";
+    font-weight: 500 !important;
+    margin-right: 12px !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    right: 100% !important;
+    white-space: nowrap !important;
+}
+
+.inline-group .inline-deletelink:hover,
+.djn-group .inline-deletelink:hover {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+}
+
+@media (max-width: 767px) {
+    .inline-group .inline-deletelink,
+    .djn-group .inline-deletelink {
+        margin: 12px 0 4px !important;
+        position: static !important;
+    }
+
+    .inline-group .inline-deletelink::before,
+    .djn-group .inline-deletelink::before {
+        content: "" !important;
+    }
+}
+
+.submit-row {
+    background: #f8fafc !important;
+    border: 1px solid #dbe3ef !important;
+    border-radius: 6px !important;
+    margin-top: 18px !important;
+    padding: 12px !important;
 }

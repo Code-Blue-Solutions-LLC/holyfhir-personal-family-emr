@@ -22,8 +22,9 @@ from config.db.backends.sqlcipher.base import _is_plaintext_sqlite_database
 from config.env import load_env, parse_env_file
 from patients.models import LoginLockout
 from patients.forms import RecoveryKeyPasswordResetForm
-from patients.models import RecoveryCredential
+from patients.models import PatientProfile, RecoveryCredential
 from patients.recovery import check_recovery_key, generate_recovery_key, hash_recovery_key
+from clinical.models import CareTeam
 
 
 class DatabaseConfigTests(SimpleTestCase):
@@ -355,3 +356,23 @@ class RecoveryKeyTests(TestCase):
         )
 
         self.assertFalse(form.is_valid())
+
+
+class PatientProfileAdminTests(TestCase):
+    def test_related_records_includes_care_team_link(self):
+        User = get_user_model()
+        user = User.objects.create_superuser(
+            username="owner",
+            email="owner@example.test",
+            password="correct-password",
+        )
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+        CareTeam.objects.create(patient=patient, name="Primary care team")
+        self.client.force_login(user)
+
+        response = self.client.get(f"/admin/patients/patientprofile/{patient.pk}/change/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Care Team (1)")
+        self.assertContains(response, f"/admin/clinical/careteam/?patient__id__exact={patient.pk}")
+        self.assertContains(response, f"/admin/clinical/careteam/add/?patient={patient.pk}")

@@ -162,6 +162,7 @@ JAZZMIN_SETTINGS = {
     "site_header": "HolyFHIR Personal EMR",
     "site_brand": "HolyFHIR Personal EMR",
     "site_logo": None,  # e.g. "my_app/static/images/logo.png"
+    "custom_css": "css/admin_custom.css",
     # "show_ui_builder": True,
     "changeform_format": "single",
 

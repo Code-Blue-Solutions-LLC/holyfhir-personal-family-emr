@@ -91,12 +91,15 @@ class PatientProfileAdmin(admin.ModelAdmin):
 
     list_display = (
         "id",
-        "first_name",
-        "last_name",
+        "full_name",
         "date_of_birth",
         "phone",
         "email",
         "updated_at",
+    )
+    list_display_links = (
+        "id",
+        "full_name",
     )
 
     search_fields = (
@@ -173,11 +176,17 @@ class PatientProfileAdmin(admin.ModelAdmin):
             self._related_record_link(obj, "Immunizations", "clinical_immunization", obj.immunizations.count()),
             self._related_record_link(obj, "Vitals & Labs", "clinical_observation", obj.observations.count()),
             self._related_record_link(obj, "Visits", "clinical_encounter", obj.encounters.count()),
+            self._related_record_link(obj, "Care Team", "clinical_careteam", obj.care_teams.count()),
             self._related_record_link(obj, "Documents", "documents_clinicaldocument", obj.documents.count()),
             self._related_record_link(obj, "FHIR snapshots", "fhir_fhirresourcesnapshot", obj.fhir_snapshots.count()),
         ]
 
         return format_html("<ul>{}</ul>", format_html_join("", "<li>{}</li>", ((row,) for row in rows)))
+
+    @admin.display(description="Patient", ordering="last_name")
+    def full_name(self, obj):
+        name = f"{obj.first_name} {obj.last_name}".strip()
+        return format_html("<strong>{}</strong>", name or f"Patient #{obj.pk}")
 
     def _related_record_link(self, obj, label, admin_model_name, count):
         changelist_url = reverse(f"admin:{admin_model_name}_changelist")

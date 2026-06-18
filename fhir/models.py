@@ -26,6 +26,10 @@ class FHIRResourceSnapshot(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        label = f"{self.resource_type}/{self.resource_id}".rstrip("/")
+        return label or f"FHIR snapshot #{self.pk}"
+
 
 class FHIRLink(models.Model):
     resource_type = models.CharField(max_length=100)
@@ -38,3 +42,8 @@ class FHIRLink(models.Model):
 
     last_synced_at = models.DateTimeField(null=True, blank=True)
     direction = models.CharField(max_length=20, default="internal_to_fhir")
+
+    def __str__(self):
+        resource_label = f"{self.resource_type}/{self.resource_id}".rstrip("/")
+        target_label = f"{self.django_model} #{self.django_object_id}"
+        return f"{resource_label or 'FHIR resource'} -> {target_label}"

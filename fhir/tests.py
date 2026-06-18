@@ -12,7 +12,16 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from clinical.models import CareTeam, Condition, Location, Medication, Observation, Organization, Practitioner
+from clinical.models import (
+    CareTeam,
+    CareTeamParticipant,
+    Condition,
+    Location,
+    Medication,
+    Observation,
+    Organization,
+    Practitioner,
+)
 from patients.models import PatientProfile
 
 from .backups import create_pre_import_database_backup, list_fhir_import_database_backups
@@ -228,6 +237,11 @@ class FHIRImportTests(TestCase):
         self.assertEqual(care_team.notes, "Call office before medication changes.")
         self.assertIn("Primary care physician: Dr. Ada Lovelace (2021-01-01)", care_team.participants)
         self.assertIn("Cardiology: Practitioner/prac-1", care_team.participants)
+        self.assertEqual(care_team.participant_links.count(), 2)
+        unresolved_participant = CareTeamParticipant.objects.get(member_reference="Practitioner/prac-1")
+        self.assertEqual(unresolved_participant.care_team, care_team)
+        self.assertEqual(unresolved_participant.role, "Cardiology")
+        self.assertIsNone(unresolved_participant.practitioner)
         self.assertTrue(
             FHIRLink.objects.filter(
                 resource_type="CareTeam",
@@ -319,6 +333,86 @@ class FHIRImportTests(TestCase):
             set(FHIRLink.objects.values_list("django_model", flat=True)),
             {"clinical.Practitioner", "clinical.Organization", "clinical.Location"},
         )
+
+    def test_imports_care_team_directory_relationships(self):
+        payload = {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "pat-1",
+                        "name": [{"family": "Rivera", "given": ["Maya"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "CareTeam",
+                        "id": "careteam-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "name": "Specialty care team",
+                        "participant": [
+                            {
+                                "role": [{"text": "Endocrinologist"}],
+                                "member": {"reference": "Practitioner/prac-1", "display": "Dr. Grace Hopper"},
+                                "onBehalfOf": {"reference": "Organization/org-1", "display": "Example Health"},
+                                "period": {"start": "2022-01-01", "end": "2024-01-01"},
+                            },
+                            {
+                                "role": [{"text": "Clinic"}],
+                                "member": {"reference": "Location/loc-1", "display": "Main Clinic"},
+                            },
+                        ],
+                        "managingOrganization": [{"reference": "Organization/org-1"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Practitioner",
+                        "id": "prac-1",
+                        "name": [{"text": "Dr. Grace Hopper"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": "org-1",
+                        "name": "Example Health",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Location",
+                        "id": "loc-1",
+                        "name": "Main Clinic",
+                    }
+                },
+            ],
+        }
+
+        result = import_fhir_json(payload)
+
+        self.assertEqual(result.created, 5)
+        self.assertEqual(result.errors, [])
+
+        care_team = CareTeam.objects.get()
+        practitioner = Practitioner.objects.get()
+        organization = Organization.objects.get()
+        location = Location.objects.get()
+
+        self.assertEqual(list(care_team.managing_organizations.all()), [organization])
+
+        practitioner_participant = CareTeamParticipant.objects.get(role="Endocrinologist")
+        self.assertEqual(practitioner_participant.care_team, care_team)
+        self.assertEqual(practitioner_participant.practitioner, practitioner)
+        self.assertEqual(practitioner_participant.organization, organization)
+        self.assertEqual(practitioner_participant.member_reference, "Practitioner/prac-1")
+        self.assertEqual(practitioner_participant.on_behalf_of_reference, "Organization/org-1")
+        self.assertEqual(practitioner_participant.start_date, date(2022, 1, 1))
+        self.assertEqual(practitioner_participant.end_date, date(2024, 1, 1))
+
+        location_participant = CareTeamParticipant.objects.get(role="Clinic")
+        self.assertEqual(location_participant.location, location)
 
     def test_missing_patient_reference_is_snapshotted_as_invalid(self):
         result = import_fhir_json(

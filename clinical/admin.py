@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     Allergy,
     CareTeam,
+    CareTeamParticipant,
     Condition,
     Encounter,
     Immunization,
@@ -66,34 +67,77 @@ class EncounterAdmin(admin.ModelAdmin):
     autocomplete_fields = ["patient"]
 
 
+class CareTeamParticipantInline(admin.StackedInline):
+    model = CareTeamParticipant
+    extra = 0
+    fieldsets = (
+        (None, {
+            "fields": (
+                "role",
+                "practitioner",
+                "organization",
+                "location",
+            ),
+        }),
+        ("Source details", {
+            "fields": (
+                "member_display",
+                "member_reference",
+                "on_behalf_of_display",
+                "on_behalf_of_reference",
+                "start_date",
+                "end_date",
+            ),
+            "classes": ("collapse",),
+        }),
+    )
+    autocomplete_fields = ["practitioner", "organization", "location"]
+
+
 @admin.register(CareTeam)
 class CareTeamAdmin(admin.ModelAdmin):
+    inlines = (CareTeamParticipantInline,)
     list_display = ("id", "patient", "name", "status", "category", "start_date")
     search_fields = ("name", "category", "participants", "reason")
     list_filter = ("patient", "status", "category")
     ordering = ("patient", "name")
-    autocomplete_fields = ["patient"]
+    autocomplete_fields = ["patient", "managing_organizations"]
+    filter_horizontal = ("managing_organizations",)
 
 
 @admin.register(Practitioner)
 class PractitionerAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "qualification", "phone", "email", "active")
+    list_display = ("id", "name", "qualification", "phone", "email", "active", "care_team_count")
     search_fields = ("name", "npi", "qualification", "phone", "email")
     list_filter = ("active", "qualification")
     ordering = ("name",)
 
+    @admin.display(description="Care teams")
+    def care_team_count(self, obj):
+        return obj.care_team_participations.count()
+
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "organization_type", "phone", "email", "active")
+    list_display = ("id", "name", "organization_type", "phone", "email", "active", "care_team_count")
     search_fields = ("name", "organization_type", "phone", "email")
     list_filter = ("active", "organization_type")
     ordering = ("name",)
 
+    @admin.display(description="Care teams")
+    def care_team_count(self, obj):
+        participation_count = obj.care_team_participations.count()
+        managing_count = obj.managed_care_teams.count()
+        return participation_count + managing_count
+
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "status", "mode", "location_type", "managing_organization")
+    list_display = ("id", "name", "status", "mode", "location_type", "managing_organization", "care_team_count")
     search_fields = ("name", "location_type", "managing_organization", "phone", "email")
     list_filter = ("status", "mode", "location_type")
     ordering = ("name",)
+
+    @admin.display(description="Care teams")
+    def care_team_count(self, obj):
+        return obj.care_team_participations.count()

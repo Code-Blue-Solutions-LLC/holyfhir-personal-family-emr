@@ -9,6 +9,7 @@ from django.utils.dateparse import parse_date, parse_datetime
 from clinical.models import (
     Allergy,
     CareTeam,
+    CareTeamParticipant,
     Condition,
     Encounter,
     Immunization,
@@ -81,7 +82,24 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
 
         for resource in resources:
             resource_type = resource.get("resourceType")
-            if resource_type == "Patient":
+            if resource_type not in PATIENTLESS_RESOURCE_TYPES:
+                continue
+            if resource_type not in SUPPORTED_RESOURCE_TYPES:
+                continue
+
+            importer = {
+                "Practitioner": _import_practitioner,
+                "Organization": _import_organization,
+                "Location": _import_location,
+            }[resource_type]
+            obj, created = importer(resource, None)
+            _record_import(result, created)
+            _snapshot(resource, None, source, result)
+            _link(resource, None, _model_label(obj), obj.id, "fhir_to_internal")
+
+        for resource in resources:
+            resource_type = resource.get("resourceType")
+            if resource_type == "Patient" or resource_type in PATIENTLESS_RESOURCE_TYPES:
                 continue
 
             patient = _resolve_patient(resource, patient_by_reference, default_patient=target_patient)
@@ -347,6 +365,8 @@ def _import_care_team(resource, patient):
     obj.notes = _notes(resource)
     created = obj.pk is None
     obj.save()
+    obj.managing_organizations.set(_care_team_managing_organizations(resource))
+    _sync_care_team_participants(resource, obj)
     return obj, created
 
 
@@ -416,6 +436,7 @@ def _object_for_resource(resource, django_model):
         Observation,
         Encounter,
         CareTeam,
+        CareTeamParticipant,
         Practitioner,
         Organization,
         Location,
@@ -423,6 +444,21 @@ def _object_for_resource(resource, django_model):
         if model._meta.app_label == app_label and model.__name__ == model_name:
             return model.objects.filter(pk=link.django_object_id).first()
     return None
+
+
+def _object_for_reference(reference):
+    if not reference or "/" not in reference:
+        return None
+    resource_type, resource_id = reference.split("/", 1)
+    model_by_resource_type = {
+        "Practitioner": "clinical.Practitioner",
+        "Organization": "clinical.Organization",
+        "Location": "clinical.Location",
+    }
+    django_model = model_by_resource_type.get(resource_type)
+    if not django_model:
+        return None
+    return _object_for_resource({"resourceType": resource_type, "id": resource_id}, django_model)
 
 
 def _resolve_patient(resource, patient_by_reference, default_patient=None):
@@ -616,6 +652,50 @@ def _care_team_participants(resource):
         if line:
             participants.append(line)
     return "\n".join(participants)
+
+
+def _care_team_managing_organizations(resource):
+    organizations = []
+    for reference in resource.get("managingOrganization") or []:
+        organization = _object_for_reference(reference.get("reference"))
+        if isinstance(organization, Organization):
+            organizations.append(organization)
+    return organizations
+
+
+def _sync_care_team_participants(resource, care_team):
+    care_team.participant_links.all().delete()
+    for participant in resource.get("participant") or []:
+        member = participant.get("member") or {}
+        on_behalf_of = participant.get("onBehalfOf") or {}
+        period = participant.get("period") or {}
+        member_reference = member.get("reference") or ""
+        on_behalf_of_reference = on_behalf_of.get("reference") or ""
+
+        participant_link = CareTeamParticipant(
+            care_team=care_team,
+            role=_codeable_text(_first(participant.get("role"))) or "",
+            member_display=_display(member),
+            member_reference=member_reference,
+            on_behalf_of_display=_display(on_behalf_of),
+            on_behalf_of_reference=on_behalf_of_reference,
+            start_date=_date(period.get("start")),
+            end_date=_date(period.get("end")),
+        )
+
+        member_obj = _object_for_reference(member_reference)
+        if isinstance(member_obj, Practitioner):
+            participant_link.practitioner = member_obj
+        elif isinstance(member_obj, Organization):
+            participant_link.organization = member_obj
+        elif isinstance(member_obj, Location):
+            participant_link.location = member_obj
+
+        on_behalf_of_obj = _object_for_reference(on_behalf_of_reference)
+        if isinstance(on_behalf_of_obj, Organization) and not participant_link.organization:
+            participant_link.organization = on_behalf_of_obj
+
+        participant_link.save()
 
 
 def _observation_category(resource):

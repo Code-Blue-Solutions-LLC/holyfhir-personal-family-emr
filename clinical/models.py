@@ -15,6 +15,9 @@ class Condition(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Allergy(models.Model):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="allergies")
@@ -32,6 +35,9 @@ class Allergy(models.Model):
     
     class Meta:
         verbose_name_plural = "Allergies"
+
+    def __str__(self):
+        return self.substance
 
 
 class Medication(models.Model):
@@ -51,6 +57,9 @@ class Medication(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Immunization(models.Model):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="immunizations")
@@ -64,6 +73,9 @@ class Immunization(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.vaccine_name
 
 
 class Observation(models.Model):
@@ -94,6 +106,9 @@ class Observation(models.Model):
         verbose_name = "Vitals & Lab Result"
         verbose_name_plural = "Vitals & Labs"
 
+    def __str__(self):
+        return self.name
+
 
 class Encounter(models.Model):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="encounters")
@@ -113,9 +128,17 @@ class Encounter(models.Model):
         verbose_name = "Visit"
         verbose_name_plural = "Visits"
 
+    def __str__(self):
+        return self.encounter_type or self.reason or f"Visit #{self.pk}"
+
 
 class CareTeam(models.Model):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="care_teams")
+    managing_organizations = models.ManyToManyField(
+        "Organization",
+        blank=True,
+        related_name="managed_care_teams",
+    )
     name = models.CharField(max_length=255)
     status = models.CharField(max_length=30, blank=True)
     category = models.CharField(max_length=255, blank=True)
@@ -132,6 +155,51 @@ class CareTeam(models.Model):
         verbose_name = "Care Team"
         verbose_name_plural = "Care Team"
 
+    def __str__(self):
+        return self.name
+
+
+class CareTeamParticipant(models.Model):
+    care_team = models.ForeignKey(CareTeam, on_delete=models.CASCADE, related_name="participant_links")
+    practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="care_team_participations",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="care_team_participations",
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="care_team_participations",
+    )
+    role = models.CharField(max_length=255, blank=True)
+    member_display = models.CharField(max_length=255, blank=True)
+    member_reference = models.CharField(max_length=255, blank=True)
+    on_behalf_of_display = models.CharField(max_length=255, blank=True)
+    on_behalf_of_reference = models.CharField(max_length=255, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Care Team Participant"
+        verbose_name_plural = "Care Team Participants"
+
+    def __str__(self):
+        participant = self.practitioner or self.organization or self.location or self.member_display
+        if self.role and participant:
+            return f"{self.role}: {participant}"
+        return str(participant or self.role or f"Participant #{self.pk}")
+
 
 class Practitioner(models.Model):
     name = models.CharField(max_length=255)
@@ -146,6 +214,9 @@ class Practitioner(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Organization(models.Model):
     name = models.CharField(max_length=255)
@@ -158,6 +229,9 @@ class Organization(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Location(models.Model):
@@ -173,3 +247,6 @@ class Location(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
