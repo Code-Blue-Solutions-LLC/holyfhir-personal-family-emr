@@ -6,12 +6,12 @@ from .models import FHIRResourceSnapshot, FHIRLink
 class FHIRResourceSnapshotAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "resource_type",
-        "resource_id",
+        "resource_label",
         "source",
         "is_valid",
         "created_at",
     )
+    list_display_links = ("resource_label",)
 
     search_fields = (
         "resource_type",
@@ -31,17 +31,21 @@ class FHIRResourceSnapshotAdmin(admin.ModelAdmin):
         "validation_errors",
     )
 
+    @admin.display(description="FHIR resource", ordering="resource_type")
+    def resource_label(self, obj):
+        return str(obj)
+
 
 @admin.register(FHIRLink)
 class FHIRLinkAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "resource_type",
-        "resource_id",
+        "resource_label",
         "django_model",
         "django_object_id",
         "last_synced_at",
     )
+    list_display_links = ("resource_label",)
 
     search_fields = (
         "resource_type",
@@ -53,3 +57,7 @@ class FHIRLinkAdmin(admin.ModelAdmin):
         "resource_type",
         "direction",
     )
+
+    @admin.display(description="FHIR resource", ordering="resource_type")
+    def resource_label(self, obj):
+        return f"{obj.resource_type}/{obj.resource_id}".rstrip("/") or "FHIR resource"

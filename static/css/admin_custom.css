@@ -42,6 +42,18 @@
     border: 1px solid #9ca3af !important;
 }
 
+/* Make changelist edit links read as the obvious way into a record. */
+#result_list tbody th a,
+#result_list tbody td a {
+    font-weight: 650;
+    text-underline-offset: 3px;
+}
+
+#result_list tbody th a:hover,
+#result_list tbody td a:hover {
+    text-decoration: underline;
+}
+
 /* Make empty stacked inlines feel like an action area instead of a blank panel. */
 .inline-group .add-row,
 .djn-group .add-row {
@@ -169,4 +181,36 @@
     border-radius: 6px !important;
     margin-top: 18px !important;
     padding: 12px !important;
+}
+
+/* Hide Django formset scaffolding in read-only patient summary inlines. */
+body.app-patients.model-patientprofile.change-form .card {
+    margin-bottom: 18px !important;
+}
+
+body.app-patients.model-patientprofile.change-form .card .card-body {
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+}
+
+.card.patient-record-inline {
+    margin-bottom: 18px !important;
+}
+
+.card.patient-record-inline .card-body {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+}
+
+.card.patient-record-inline th.original,
+.card.patient-record-inline td.original,
+.card.patient-record-inline tr.empty-form,
+.card.patient-record-inline .empty-form,
+.card.patient-record-inline .inline-group .add-row,
+fieldset.patient-record-inline th.original,
+fieldset.patient-record-inline td.original,
+fieldset.patient-record-inline tr.empty-form,
+fieldset.patient-record-inline .empty-form,
+fieldset.patient-record-inline .inline-group .add-row {
+    display: none !important;
 }

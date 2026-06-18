@@ -12,12 +12,34 @@ from .models import PatientProfile, RecoveryCredential
 User = get_user_model()
 
 
-class ConditionInline(admin.TabularInline):
-    model = Condition
+class ReadOnlyPatientRecordInline(admin.TabularInline):
     extra = 0
     max_num = 0
     can_delete = False
-    show_change_link = True
+    show_change_link = False
+    classes = ("patient-record-inline",)
+    readonly_fields = ("open_record",)
+
+    @admin.display(description="")
+    def open_record(self, obj):
+        if not obj or not obj.pk:
+            return ""
+
+        url = reverse(
+            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
+            args=[obj.pk],
+        )
+        return format_html('<a class="btn btn-primary btn-sm" href="{}">Open</a>', url)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class ConditionInline(ReadOnlyPatientRecordInline):
+    model = Condition
     fields = (
         "name",
         "clinical_status",
@@ -25,44 +47,26 @@ class ConditionInline(admin.TabularInline):
         "abatement_date",
         "icd10_code",
         "snomed_code",
+        "open_record",
     )
     readonly_fields = fields
 
-    def has_add_permission(self, request, obj=None):
-        return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class AllergyInline(admin.TabularInline):
+class AllergyInline(ReadOnlyPatientRecordInline):
     model = Allergy
-    extra = 0
-    max_num = 0
-    can_delete = False
-    show_change_link = True
     fields = (
         "substance",
         "category",
         "criticality",
         "reaction",
         "severity",
+        "open_record",
     )
     readonly_fields = fields
 
-    def has_add_permission(self, request, obj=None):
-        return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class MedicationInline(admin.TabularInline):
+class MedicationInline(ReadOnlyPatientRecordInline):
     model = Medication
-    extra = 0
-    max_num = 0
-    can_delete = False
-    show_change_link = True
     fields = (
         "name",
         "status",
@@ -70,14 +74,9 @@ class MedicationInline(admin.TabularInline):
         "frequency",
         "start_date",
         "end_date",
+        "open_record",
     )
     readonly_fields = fields
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(PatientProfile)
@@ -98,7 +97,6 @@ class PatientProfileAdmin(admin.ModelAdmin):
         "updated_at",
     )
     list_display_links = (
-        "id",
         "full_name",
     )
 

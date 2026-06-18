@@ -17,6 +17,7 @@ from .models import (
 @admin.register(Condition)
 class ConditionAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "name", "clinical_status", "onset_date")
+    list_display_links = ("name",)
     search_fields = ("name", "icd10_code", "snomed_code")
     list_filter = ("patient", "clinical_status")
     autocomplete_fields = ["patient"]
@@ -26,6 +27,7 @@ class ConditionAdmin(admin.ModelAdmin):
 @admin.register(Allergy)
 class AllergyAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "substance", "category", "severity")
+    list_display_links = ("substance",)
     search_fields = ("substance", "rxnorm_code", "snomed_code")
     list_filter = ("patient", "category", "severity", "criticality")
     autocomplete_fields = ["patient"]
@@ -34,6 +36,7 @@ class AllergyAdmin(admin.ModelAdmin):
 @admin.register(Medication)
 class MedicationAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "name", "status", "indication", "start_date")
+    list_display_links = ("name",)
     search_fields = ("name", "rxnorm_code", "prescriber")
     list_filter = ("patient", "status")
     ordering = ("-start_date",)
@@ -43,6 +46,7 @@ class MedicationAdmin(admin.ModelAdmin):
 @admin.register(Immunization)
 class ImmunizationAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "vaccine_name", "occurrence_date")
+    list_display_links = ("vaccine_name",)
     search_fields = ("vaccine_name", "cvx_code")
     list_filter = ("patient",)
     ordering = ("-occurrence_date",)
@@ -52,6 +56,7 @@ class ImmunizationAdmin(admin.ModelAdmin):
 @admin.register(Observation)
 class ObservationAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "name", "category", "effective_datetime")
+    list_display_links = ("name",)
     search_fields = ("name", "loinc_code")
     list_filter = ("patient", "category")
     ordering = ("-effective_datetime",)
@@ -61,6 +66,7 @@ class ObservationAdmin(admin.ModelAdmin):
 @admin.register(Encounter)
 class EncounterAdmin(admin.ModelAdmin):
     list_display = ("id", "patient", "encounter_type", "provider_name", "facility_name", "start_time")
+    list_display_links = ("encounter_type",)
     search_fields = ("provider_name", "facility_name", "reason")
     list_filter = ("patient", "status")
     ordering = ("-start_time",)
@@ -98,6 +104,7 @@ class CareTeamParticipantInline(admin.StackedInline):
 class CareTeamAdmin(admin.ModelAdmin):
     inlines = (CareTeamParticipantInline,)
     list_display = ("id", "patient", "name", "status", "category", "start_date")
+    list_display_links = ("name",)
     search_fields = ("name", "category", "participants", "reason")
     list_filter = ("patient", "status", "category")
     ordering = ("patient", "name")
@@ -108,6 +115,7 @@ class CareTeamAdmin(admin.ModelAdmin):
 @admin.register(Practitioner)
 class PractitionerAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "qualification", "phone", "email", "active", "care_team_count")
+    list_display_links = ("name",)
     search_fields = ("name", "npi", "qualification", "phone", "email")
     list_filter = ("active", "qualification")
     ordering = ("name",)
@@ -120,6 +128,7 @@ class PractitionerAdmin(admin.ModelAdmin):
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "organization_type", "phone", "email", "active", "care_team_count")
+    list_display_links = ("name",)
     search_fields = ("name", "organization_type", "phone", "email")
     list_filter = ("active", "organization_type")
     ordering = ("name",)
@@ -134,6 +143,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "status", "mode", "location_type", "managing_organization", "care_team_count")
+    list_display_links = ("name",)
     search_fields = ("name", "location_type", "managing_organization", "phone", "email")
     list_filter = ("status", "mode", "location_type")
     ordering = ("name",)

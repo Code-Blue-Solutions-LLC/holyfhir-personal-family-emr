@@ -12,6 +12,7 @@ class ClinicalDocumentAdmin(admin.ModelAdmin):
         "source_name",
         "source_date",
     )
+    list_display_links = ("title",)
 
     search_fields = (
         "title",
