@@ -1,5 +1,16 @@
 from django.contrib import admin
-from .models import Condition, Allergy, Medication, Immunization, Observation, Encounter
+from .models import (
+    Allergy,
+    CareTeam,
+    Condition,
+    Encounter,
+    Immunization,
+    Location,
+    Medication,
+    Observation,
+    Organization,
+    Practitioner,
+)
 
 
 @admin.register(Condition)
@@ -53,3 +64,36 @@ class EncounterAdmin(admin.ModelAdmin):
     list_filter = ("patient", "status")
     ordering = ("-start_time",)
     autocomplete_fields = ["patient"]
+
+
+@admin.register(CareTeam)
+class CareTeamAdmin(admin.ModelAdmin):
+    list_display = ("id", "patient", "name", "status", "category", "start_date")
+    search_fields = ("name", "category", "participants", "reason")
+    list_filter = ("patient", "status", "category")
+    ordering = ("patient", "name")
+    autocomplete_fields = ["patient"]
+
+
+@admin.register(Practitioner)
+class PractitionerAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "qualification", "phone", "email", "active")
+    search_fields = ("name", "npi", "qualification", "phone", "email")
+    list_filter = ("active", "qualification")
+    ordering = ("name",)
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "organization_type", "phone", "email", "active")
+    search_fields = ("name", "organization_type", "phone", "email")
+    list_filter = ("active", "organization_type")
+    ordering = ("name",)
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "status", "mode", "location_type", "managing_organization")
+    search_fields = ("name", "location_type", "managing_organization", "phone", "email")
+    list_filter = ("status", "mode", "location_type")
+    ordering = ("name",)

@@ -1,0 +1,92 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+  .care-directory-card .card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 190px;
+  }
+
+  .care-directory-header {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    min-width: 0;
+  }
+
+  .care-directory-icon {
+    align-items: center;
+    color: #2563eb;
+    display: inline-flex;
+    flex: 0 0 32px;
+    font-size: 1.65rem;
+    justify-content: center;
+    line-height: 1;
+    width: 32px;
+  }
+
+  .care-directory-title {
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .care-directory-description {
+    flex: 1 1 auto;
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+
+  .care-directory-count {
+    align-self: flex-start;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    color: #3730a3;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    padding: 5px 10px;
+  }
+
+  .care-directory-card .btn {
+    align-self: flex-start;
+  }
+</style>
+
+<div class="content">
+  <div class="container-fluid">
+    <div class="row">
+      {% for card in directory_cards %}
+        <div class="col-lg-3 col-md-6 col-12">
+          <div class="card card-outline card-primary h-100 care-directory-card">
+            <div class="card-body">
+              <div class="care-directory-header">
+                <span class="care-directory-icon" aria-hidden="true">
+                  <i class="{{ card.icon }}"></i>
+                </span>
+                <h3 class="care-directory-title">{{ card.title }}</h3>
+              </div>
+              <p class="text-muted care-directory-description">{{ card.description }}</p>
+              <span class="care-directory-count">
+                {{ card.count }} {{ card.count_label }}{{ card.count|pluralize }}
+              </span>
+              <a href="{{ card.url }}" class="btn btn-primary btn-sm">
+                Open {{ card.title }}
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

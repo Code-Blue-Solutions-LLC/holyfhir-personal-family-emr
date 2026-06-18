@@ -6,7 +6,18 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.dateparse import parse_date, parse_datetime
 
-from clinical.models import Allergy, Condition, Encounter, Immunization, Medication, Observation
+from clinical.models import (
+    Allergy,
+    CareTeam,
+    Condition,
+    Encounter,
+    Immunization,
+    Location,
+    Medication,
+    Observation,
+    Organization,
+    Practitioner,
+)
 from patients.models import PatientProfile
 
 from .models import FHIRLink, FHIRResourceSnapshot
@@ -21,6 +32,16 @@ SUPPORTED_RESOURCE_TYPES = {
     "Immunization",
     "Observation",
     "Encounter",
+    "CareTeam",
+    "Practitioner",
+    "Organization",
+    "Location",
+}
+
+PATIENTLESS_RESOURCE_TYPES = {
+    "Practitioner",
+    "Organization",
+    "Location",
 }
 
 
@@ -69,7 +90,7 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 _snapshot(resource, patient, source, result, is_valid=False, errors=["Unsupported resource type."])
                 continue
 
-            if not patient:
+            if not patient and resource_type not in PATIENTLESS_RESOURCE_TYPES:
                 result.errors.append(f"{_resource_label(resource)} could not be linked to a patient.")
                 _snapshot(resource, None, source, result, is_valid=False, errors=["Missing or unknown patient reference."])
                 continue
@@ -82,6 +103,10 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 "Immunization": _import_immunization,
                 "Observation": _import_observation,
                 "Encounter": _import_encounter,
+                "CareTeam": _import_care_team,
+                "Practitioner": _import_practitioner,
+                "Organization": _import_organization,
+                "Location": _import_location,
             }[resource_type]
             obj, created = importer(resource, patient)
             _record_import(result, created)
@@ -308,6 +333,68 @@ def _import_encounter(resource, patient):
     return obj, created
 
 
+def _import_care_team(resource, patient):
+    obj = _object_for_resource(resource, "clinical.CareTeam") or CareTeam(patient=patient)
+    period = resource.get("period") or {}
+    obj.patient = patient
+    obj.name = resource.get("name") or _codeable_text(_first(resource.get("category"))) or "Care Team"
+    obj.status = resource.get("status") or ""
+    obj.category = _codeable_text(_first(resource.get("category"))) or ""
+    obj.participants = _care_team_participants(resource)
+    obj.start_date = _date(period.get("start"))
+    obj.end_date = _date(period.get("end"))
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_practitioner(resource, patient=None):
+    obj = _object_for_resource(resource, "clinical.Practitioner") or Practitioner()
+    obj.name = _human_name(resource) or "Unknown practitioner"
+    obj.npi = _identifier_value(resource, "npi") or obj.npi
+    obj.active = bool(resource.get("active", True))
+    obj.qualification = _codeable_text((_first(resource.get("qualification")) or {}).get("code")) or ""
+    obj.phone = _telecom(resource, "phone")
+    obj.email = _telecom(resource, "email")
+    obj.address = _address_text(_first(resource.get("address")) or {})
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_organization(resource, patient=None):
+    obj = _object_for_resource(resource, "clinical.Organization") or Organization()
+    obj.name = resource.get("name") or "Unknown organization"
+    obj.organization_type = _codeable_text(_first(resource.get("type"))) or ""
+    obj.active = bool(resource.get("active", True))
+    obj.phone = _telecom(resource, "phone")
+    obj.email = _telecom(resource, "email")
+    obj.address = _address_text(_first(resource.get("address")) or {})
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_location(resource, patient=None):
+    obj = _object_for_resource(resource, "clinical.Location") or Location()
+    obj.name = resource.get("name") or "Unknown location"
+    obj.status = resource.get("status") or ""
+    obj.mode = resource.get("mode") or ""
+    obj.location_type = _codeable_text(_first(resource.get("type"))) or ""
+    obj.managing_organization = _display(resource.get("managingOrganization"))
+    obj.phone = _telecom(resource, "phone")
+    obj.email = _telecom(resource, "email")
+    obj.address = _address_text(resource.get("address") or {})
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
 def _object_for_resource(resource, django_model):
     resource_id = resource.get("id")
     if not resource_id:
@@ -320,7 +407,19 @@ def _object_for_resource(resource, django_model):
     if not link:
         return None
     app_label, model_name = django_model.split(".")
-    for model in (PatientProfile, Condition, Allergy, Medication, Immunization, Observation, Encounter):
+    for model in (
+        PatientProfile,
+        Condition,
+        Allergy,
+        Medication,
+        Immunization,
+        Observation,
+        Encounter,
+        CareTeam,
+        Practitioner,
+        Organization,
+        Location,
+    ):
         if model._meta.app_label == app_label and model.__name__ == model_name:
             return model.objects.filter(pk=link.django_object_id).first()
     return None
@@ -420,6 +519,40 @@ def _telecom(resource, system):
     return ""
 
 
+def _identifier_value(resource, system_fragment):
+    for identifier in resource.get("identifier") or []:
+        system = (identifier.get("system") or "").lower()
+        type_text = _codeable_text(identifier.get("type")).lower()
+        if system_fragment.lower() in system or system_fragment.lower() in type_text:
+            return identifier.get("value") or ""
+    return ""
+
+
+def _human_name(resource):
+    name = _first(resource.get("name")) or {}
+    text = name.get("text")
+    if text:
+        return text
+    given = " ".join(name.get("given") or [])
+    family = name.get("family") or ""
+    return " ".join(part for part in [given, family] if part)
+
+
+def _address_text(address):
+    if not isinstance(address, dict):
+        return ""
+    parts = []
+    parts.extend(address.get("line") or [])
+    city_state_postal = " ".join(
+        part for part in [address.get("city"), address.get("state"), address.get("postalCode")] if part
+    )
+    if city_state_postal:
+        parts.append(city_state_postal)
+    if address.get("country"):
+        parts.append(address["country"])
+    return "\n".join(parts)
+
+
 def _codeable_text(value):
     if not isinstance(value, dict):
         return ""
@@ -466,6 +599,23 @@ def _medication_name(resource):
 def _dosage_text(resource):
     dosage = _first(resource.get("dosage")) or {}
     return dosage.get("text") or ""
+
+
+def _care_team_participants(resource):
+    participants = []
+    for participant in resource.get("participant") or []:
+        role = _codeable_text(_first(participant.get("role")))
+        member = _display(participant.get("member"))
+        period = participant.get("period") or {}
+        dates = " - ".join(value for value in [period.get("start"), period.get("end")] if value)
+
+        parts = [part for part in [role, member] if part]
+        line = ": ".join(parts) if len(parts) == 2 else "".join(parts)
+        if dates:
+            line = f"{line} ({dates})" if line else dates
+        if line:
+            participants.append(line)
+    return "\n".join(participants)
 
 
 def _observation_category(resource):

@@ -21,7 +21,13 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path, re_path
 from config.auth_forms import RateLimitedAdminAuthenticationForm
-from config.admin_views import backups_hub, fhir_interop_hub, recovery_key_generate, settings_hub
+from config.admin_views import (
+    backups_hub,
+    clinical_care_team_directory,
+    fhir_interop_hub,
+    recovery_key_generate,
+    settings_hub,
+)
 from clinical.views import observation_charts
 from fhir.views import import_fhir_data
 from patients.views import first_run_setup, recovery_key_reset_confirm, recovery_key_reset_start
@@ -52,6 +58,7 @@ urlpatterns = [
     path('admin/settings/backups/', admin.site.admin_view(backups_hub), name='admin_backups'),
     path('admin/settings/recovery-key/', admin.site.admin_view(recovery_key_generate), name='admin_recovery_key_generate'),
     path('admin/clinical/observations/charts/', admin.site.admin_view(observation_charts), name='observation_charts'),
+    path('admin/clinical/care-team/', admin.site.admin_view(clinical_care_team_directory), name='clinical_care_team_directory'),
     path('admin/fhir/interop/', admin.site.admin_view(fhir_interop_hub), name='fhir_interop_hub'),
     path('admin/fhir/import/', import_fhir_data, name='fhir_import'),
     path('admin/', admin.site.urls),

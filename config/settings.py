@@ -192,6 +192,10 @@ JAZZMIN_SETTINGS = {
         "clinical.Immunization": "fas fa-syringe",
         "clinical.Observation": "fas fa-chart-line",
         "clinical.Encounter": "fas fa-stethoscope",
+        "clinical.CareTeam": "fas fa-user-friends",
+        "clinical.Practitioner": "fas fa-user-md",
+        "clinical.Organization": "fas fa-hospital",
+        "clinical.Location": "fas fa-map-marker-alt",
 
         "documents": "fas fa-file-medical",
         "documents.ClinicalDocument": "fas fa-file-pdf",
@@ -215,6 +219,11 @@ JAZZMIN_SETTINGS = {
             "permissions": ["patients.add_patientprofile"],
         }],
         "clinical": [{
+            "name": "Care Team Info",
+            "url": "clinical_care_team_directory",
+            "icon": "fas fa-user-friends",
+            "permissions": ["clinical.view_careteam"],
+        }, {
             "name": "Health Trends",
             "url": "observation_charts",
             "icon": "fas fa-chart-area",
@@ -239,6 +248,10 @@ JAZZMIN_SETTINGS = {
 
     "hide_models": [
         "patients.RecoveryCredential",
+        "clinical.CareTeam",
+        "clinical.Practitioner",
+        "clinical.Organization",
+        "clinical.Location",
         "system_settings.SystemSettings",
         "fhir.FHIRLink",
         "fhir.FHIRResourceSnapshot",

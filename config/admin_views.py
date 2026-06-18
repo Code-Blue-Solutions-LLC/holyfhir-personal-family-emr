@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
 
+from clinical.models import CareTeam, Location, Organization, Practitioner
 from fhir.backups import database_path, fhir_import_backup_dir, list_fhir_import_database_backups
 from patients.models import RecoveryCredential
 from patients.recovery import generate_recovery_key, hash_recovery_key
@@ -121,6 +122,50 @@ def recovery_key_generate(request):
         "has_existing_key": credential is not None,
     }
     return render(request, "admin/recovery_key_generate_confirm.html", context)
+
+
+def clinical_care_team_directory(request):
+    cards = [
+        {
+            "title": "Care Teams",
+            "description": "Manage patient care-team records imported from FHIR or entered locally.",
+            "url": reverse("admin:clinical_careteam_changelist"),
+            "icon": "fas fa-user-friends",
+            "count": CareTeam.objects.count(),
+            "count_label": "managed record",
+        },
+        {
+            "title": "Practitioners",
+            "description": "Manage clinicians and other people involved in care.",
+            "url": reverse("admin:clinical_practitioner_changelist"),
+            "icon": "fas fa-user-md",
+            "count": Practitioner.objects.count(),
+            "count_label": "managed record",
+        },
+        {
+            "title": "Organizations",
+            "description": "Manage facilities, practices, departments, and other care organizations.",
+            "url": reverse("admin:clinical_organization_changelist"),
+            "icon": "fas fa-hospital",
+            "count": Organization.objects.count(),
+            "count_label": "managed record",
+        },
+        {
+            "title": "Locations",
+            "description": "Manage clinics, hospitals, rooms, and other care sites.",
+            "url": reverse("admin:clinical_location_changelist"),
+            "icon": "fas fa-map-marker-alt",
+            "count": Location.objects.count(),
+            "count_label": "managed record",
+        },
+    ]
+
+    context = {
+        **admin.site.each_context(request),
+        "title": "Care Team",
+        "directory_cards": cards,
+    }
+    return render(request, "admin/clinical_care_team_directory.html", context)
 
 
 def fhir_interop_hub(request):

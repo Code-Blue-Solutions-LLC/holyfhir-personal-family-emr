@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from clinical.models import Condition, Medication, Observation
+from clinical.models import CareTeam, Condition, Location, Medication, Observation, Organization, Practitioner
 from patients.models import PatientProfile
 
 from .backups import create_pre_import_database_backup, list_fhir_import_database_backups
@@ -186,6 +186,138 @@ class FHIRImportTests(TestCase):
                 resource_id="epic-patient-id",
                 django_object_id=existing_patient.id,
             ).exists()
+        )
+
+    def test_imports_care_team(self):
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+        payload = {
+            "resourceType": "CareTeam",
+            "id": "careteam-1",
+            "subject": {"reference": "Patient/pat-1"},
+            "status": "active",
+            "name": "Primary care team",
+            "category": [{"text": "Longitudinal care team"}],
+            "participant": [
+                {
+                    "role": [{"text": "Primary care physician"}],
+                    "member": {"display": "Dr. Ada Lovelace"},
+                    "period": {"start": "2021-01-01"},
+                },
+                {
+                    "role": [{"text": "Cardiology"}],
+                    "member": {"reference": "Practitioner/prac-1"},
+                },
+            ],
+            "period": {"start": "2021-01-01", "end": "2023-12-31"},
+            "reasonCode": [{"text": "Ongoing care coordination"}],
+            "note": [{"text": "Call office before medication changes."}],
+        }
+
+        result = import_fhir_json(payload, target_patient=patient)
+
+        self.assertEqual(result.created, 1)
+        self.assertEqual(result.snapshots, 1)
+        care_team = CareTeam.objects.get()
+        self.assertEqual(care_team.patient, patient)
+        self.assertEqual(care_team.name, "Primary care team")
+        self.assertEqual(care_team.status, "active")
+        self.assertEqual(care_team.category, "Longitudinal care team")
+        self.assertEqual(care_team.start_date, date(2021, 1, 1))
+        self.assertEqual(care_team.end_date, date(2023, 12, 31))
+        self.assertEqual(care_team.reason, "Ongoing care coordination")
+        self.assertEqual(care_team.notes, "Call office before medication changes.")
+        self.assertIn("Primary care physician: Dr. Ada Lovelace (2021-01-01)", care_team.participants)
+        self.assertIn("Cardiology: Practitioner/prac-1", care_team.participants)
+        self.assertTrue(
+            FHIRLink.objects.filter(
+                resource_type="CareTeam",
+                resource_id="careteam-1",
+                django_model="clinical.CareTeam",
+                django_object_id=care_team.id,
+            ).exists()
+        )
+
+    def test_imports_directory_resources_without_patient_reference(self):
+        payload = {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Practitioner",
+                        "id": "prac-1",
+                        "identifier": [
+                            {
+                                "system": "http://hl7.org/fhir/sid/us-npi",
+                                "value": "1234567890",
+                            }
+                        ],
+                        "active": True,
+                        "name": [{"text": "Dr. Ada Lovelace"}],
+                        "qualification": [{"code": {"text": "MD"}}],
+                        "telecom": [
+                            {"system": "phone", "value": "555-0101"},
+                            {"system": "email", "value": "ada@example.test"},
+                        ],
+                        "address": [{"line": ["1 Clinic Way"], "city": "Boston", "state": "MA"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": "org-1",
+                        "active": True,
+                        "name": "Example Health",
+                        "type": [{"text": "Hospital"}],
+                        "telecom": [{"system": "phone", "value": "555-0102"}],
+                        "address": [{"line": ["2 Hospital Ave"], "city": "Boston", "state": "MA"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Location",
+                        "id": "loc-1",
+                        "status": "active",
+                        "mode": "instance",
+                        "name": "Example Health Main Campus",
+                        "type": [{"text": "Campus"}],
+                        "managingOrganization": {"reference": "Organization/org-1"},
+                        "telecom": [{"system": "phone", "value": "555-0103"}],
+                        "address": {"line": ["3 Care St"], "city": "Boston", "state": "MA"},
+                    }
+                },
+            ],
+        }
+
+        result = import_fhir_json(payload)
+
+        self.assertEqual(result.created, 3)
+        self.assertEqual(result.errors, [])
+        self.assertEqual(result.snapshots, 3)
+
+        practitioner = Practitioner.objects.get()
+        self.assertEqual(practitioner.name, "Dr. Ada Lovelace")
+        self.assertEqual(practitioner.npi, "1234567890")
+        self.assertEqual(practitioner.qualification, "MD")
+        self.assertEqual(practitioner.phone, "555-0101")
+        self.assertEqual(practitioner.email, "ada@example.test")
+        self.assertIn("1 Clinic Way", practitioner.address)
+
+        organization = Organization.objects.get()
+        self.assertEqual(organization.name, "Example Health")
+        self.assertEqual(organization.organization_type, "Hospital")
+        self.assertEqual(organization.phone, "555-0102")
+
+        location = Location.objects.get()
+        self.assertEqual(location.name, "Example Health Main Campus")
+        self.assertEqual(location.status, "active")
+        self.assertEqual(location.mode, "instance")
+        self.assertEqual(location.location_type, "Campus")
+        self.assertEqual(location.managing_organization, "Organization/org-1")
+        self.assertEqual(location.phone, "555-0103")
+
+        self.assertEqual(
+            set(FHIRLink.objects.values_list("django_model", flat=True)),
+            {"clinical.Practitioner", "clinical.Organization", "clinical.Location"},
         )
 
     def test_missing_patient_reference_is_snapshotted_as_invalid(self):

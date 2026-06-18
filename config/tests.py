@@ -27,3 +27,16 @@ class SettingsBackupPageTests(TestCase):
         self.assertContains(response, "Manual Restore")
         self.assertContains(response, "Close HolyFHIR completely")
         self.assertContains(response, "FHIR Import Backups")
+
+    def test_clinical_care_team_directory_lists_directory_sections(self):
+        response = self.client.get(reverse("clinical_care_team_directory"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Care Teams")
+        self.assertContains(response, "Practitioners")
+        self.assertContains(response, "Organizations")
+        self.assertContains(response, "Locations")
+        self.assertContains(response, reverse("admin:clinical_careteam_changelist"))
+        self.assertContains(response, reverse("admin:clinical_practitioner_changelist"))
+        self.assertContains(response, reverse("admin:clinical_organization_changelist"))
+        self.assertContains(response, reverse("admin:clinical_location_changelist"))

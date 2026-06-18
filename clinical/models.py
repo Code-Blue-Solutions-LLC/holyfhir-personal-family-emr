@@ -112,3 +112,64 @@ class Encounter(models.Model):
     class Meta:
         verbose_name = "Visit"
         verbose_name_plural = "Visits"
+
+
+class CareTeam(models.Model):
+    patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="care_teams")
+    name = models.CharField(max_length=255)
+    status = models.CharField(max_length=30, blank=True)
+    category = models.CharField(max_length=255, blank=True)
+    participants = models.TextField(blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Care Team"
+        verbose_name_plural = "Care Team"
+
+
+class Practitioner(models.Model):
+    name = models.CharField(max_length=255)
+    npi = models.CharField(max_length=30, blank=True)
+    active = models.BooleanField(default=True)
+    qualification = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Organization(models.Model):
+    name = models.CharField(max_length=255)
+    organization_type = models.CharField(max_length=255, blank=True)
+    active = models.BooleanField(default=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Location(models.Model):
+    name = models.CharField(max_length=255)
+    status = models.CharField(max_length=30, blank=True)
+    mode = models.CharField(max_length=30, blank=True)
+    location_type = models.CharField(max_length=255, blank=True)
+    managing_organization = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

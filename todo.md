@@ -4,3 +4,5 @@
 [ ] decide release-build DEBUG behavior without breaking bundled admin/static assets
 [ ] export quick card for medications, allergies, and conditions 
 [ ] create a full paramedic view
+[ ] add more FHIR resources
+[ ] add a dietary component
