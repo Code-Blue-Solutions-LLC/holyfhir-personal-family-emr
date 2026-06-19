@@ -337,6 +337,9 @@ class PatientProfileAdmin(admin.ModelAdmin):
             '<div class="patient-overview-main">'
             '<h3>{}</h3>'
             '<dl>{}</dl>'
+            '<div class="patient-overview-actions">'
+            '<a class="btn btn-primary btn-sm" href="{}">View all patient resources</a>'
+            '</div>'
             '</div>'
             '<div class="patient-overview-stats">{}</div>'
             '</div>',
@@ -346,6 +349,7 @@ class PatientProfileAdmin(admin.ModelAdmin):
                 '<div><dt>{}</dt><dd>{}</dd></div>',
                 demographics,
             ),
+            reverse("patient_resources_directory", args=[obj.pk]),
             format_html_join("", "{}", ((stat,) for stat in stats)),
         )
 

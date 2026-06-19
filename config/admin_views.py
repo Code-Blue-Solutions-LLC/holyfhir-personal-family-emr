@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib import messages
+from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -11,6 +12,8 @@ from clinical.models import (
     CarePlan,
     CareTeam,
     ClinicalImpression,
+    Communication,
+    CommunicationRequest,
     Condition,
     DetectedIssue,
     Device,
@@ -42,11 +45,12 @@ from clinical.models import (
     RiskAssessment,
     ServiceRequest,
     Specimen,
-    Communication,
-    CommunicationRequest,
     QuestionnaireResponse,
 )
+from documents.models import ClinicalDocument
 from fhir.backups import database_path, fhir_import_backup_dir, list_fhir_import_database_backups
+from fhir.models import FHIRResourceSnapshot
+from patients.models import PatientProfile
 from patients.models import RecoveryCredential
 from patients.recovery import generate_recovery_key, hash_recovery_key
 from system_settings.models import SystemSettings
@@ -554,6 +558,92 @@ def clinical_resources_directory(request):
         "directory_sections": sections,
     }
     return render(request, "admin/clinical_resources_directory.html", context)
+
+
+def patient_resources_directory(request, patient_id):
+    patient = get_object_or_404(PatientProfile, pk=patient_id)
+
+    def card(title, model, admin_model_name, description, icon):
+        count = model.objects.filter(patient=patient).count()
+        return {
+            "title": title,
+            "description": description,
+            "url": f"{reverse(f'admin:{admin_model_name}_changelist')}?patient__id__exact={patient.pk}",
+            "icon": icon,
+            "count": count,
+            "count_label": "record",
+        }
+
+    sections = [
+        {
+            "title": "Core Chart",
+            "cards": [
+                card("Conditions", Condition, "clinical_condition", "Problems, diagnoses, and condition history.", "fas fa-heartbeat"),
+                card("Allergies", Allergy, "clinical_allergy", "Allergies, intolerances, reactions, and severity.", "fas fa-exclamation-triangle"),
+                card("Medications", Medication, "clinical_medication", "Medication requests/statements and dosage text.", "fas fa-pills"),
+                card("Immunizations", Immunization, "clinical_immunization", "Vaccines, dates, lots, and performers.", "fas fa-syringe"),
+                card("Vitals & Labs", Observation, "clinical_observation", "Observations, vital signs, lab values, and results.", "fas fa-chart-line"),
+                card("Diagnostic Reports", DiagnosticReport, "clinical_diagnosticreport", "Lab, pathology, imaging, and diagnostic reports.", "fas fa-file-medical-alt"),
+                card("Documents", ClinicalDocument, "documents_clinicaldocument", "Clinical documents and imported document references.", "fas fa-file-pdf"),
+            ],
+        },
+        {
+            "title": "Care & Events",
+            "cards": [
+                card("Visits & Actions", Encounter, "clinical_encounter", "Encounters, visits, facilities, providers, and summaries.", "fas fa-stethoscope"),
+                card("Episodes of Care", EpisodeOfCare, "clinical_episodeofcare", "Longer care intervals and care responsibility.", "fas fa-project-diagram"),
+                card("Care Teams", CareTeam, "clinical_careteam", "Care teams and structured participants.", "fas fa-user-friends"),
+                card("Care Plans", CarePlan, "clinical_careplan", "Care plans connected to concerns and teams.", "fas fa-clipboard-list"),
+                card("Goals", Goal, "clinical_goal", "Care goals, targets, outcomes, and status.", "fas fa-bullseye"),
+                card("Service Requests", ServiceRequest, "clinical_servicerequest", "Orders, referrals, requested services, and reasons.", "fas fa-tasks"),
+                card("Procedures", Procedure, "clinical_procedure", "Completed procedures, actions, performers, and reasons.", "fas fa-procedures"),
+                card("Specimens", Specimen, "clinical_specimen", "Lab specimens, collection details, and parent specimens.", "fas fa-vial"),
+            ],
+        },
+        {
+            "title": "Safety, Risk & Context",
+            "cards": [
+                card("Adverse Events", AdverseEvent, "clinical_adverseevent", "Actual or potential harm events and suspect entities.", "fas fa-exclamation-circle"),
+                card("Detected Issues", DetectedIssue, "clinical_detectedissue", "Clinical safety or quality issues.", "fas fa-shield-alt"),
+                card("Risk Assessments", RiskAssessment, "clinical_riskassessment", "Risk estimates, predictions, basis records, and mitigation.", "fas fa-chart-pie"),
+                card("Clinical Impressions", ClinicalImpression, "clinical_clinicalimpression", "Clinical assessments, findings, and investigations.", "fas fa-notes-medical"),
+                card("Family History", FamilyMemberHistory, "clinical_familymemberhistory", "Family member relationships, conditions, and outcomes.", "fas fa-people-arrows"),
+                card("Body Structures", BodyStructure, "clinical_bodystructure", "Anatomical locations, morphology, and body-site detail.", "fas fa-diagnoses"),
+                card("Flags", Flag, "clinical_flag", "Patient alerts, warnings, and awareness notes.", "fas fa-flag"),
+            ],
+        },
+        {
+            "title": "Devices, Nutrition & Communication",
+            "cards": [
+                card("Devices", Device, "clinical_device", "Patient devices, implanted devices, and identifiers.", "fas fa-laptop-medical"),
+                card("Device Requests", DeviceRequest, "clinical_devicerequest", "Orders and requests for devices.", "fas fa-toolbox"),
+                card("Device Use", DeviceUseStatement, "clinical_deviceusestatement", "Statements that a patient uses or used a device.", "fas fa-notes-medical"),
+                card("Medication Administrations", MedicationAdministration, "clinical_medicationadministration", "Medication doses administered to the patient.", "fas fa-prescription-bottle"),
+                card("Medication Dispenses", MedicationDispense, "clinical_medicationdispense", "Medication dispensed or supplied to the patient.", "fas fa-prescription-bottle-alt"),
+                card("Nutrition Orders", NutritionOrder, "clinical_nutritionorder", "Diet, supplement, oral, and enteral nutrition orders.", "fas fa-utensils"),
+                card("Communications", Communication, "clinical_communication", "Messages or information sent about the patient.", "fas fa-comments"),
+                card("Communication Requests", CommunicationRequest, "clinical_communicationrequest", "Requests to convey information.", "fas fa-paper-plane"),
+            ],
+        },
+        {
+            "title": "Forms, Lists & FHIR",
+            "cards": [
+                card("Questionnaire Responses", QuestionnaireResponse, "clinical_questionnaireresponse", "Completed forms, assessments, and patient-entered answers.", "fas fa-clipboard-list"),
+                card("FHIR Lists", FHIRList, "clinical_fhirlist", "Curated FHIR lists of records for this patient.", "fas fa-list"),
+                card("Immunization Recommendations", ImmunizationRecommendation, "clinical_immunizationrecommendation", "Vaccine forecasts and recommended timing.", "fas fa-calendar-check"),
+                card("Related People", RelatedPerson, "clinical_relatedperson", "Family, caregivers, proxies, and patient-related contacts.", "fas fa-address-book"),
+                card("FHIR Snapshots", FHIRResourceSnapshot, "fhir_fhirresourcesnapshot", "Raw imported FHIR resources preserved for this patient.", "fas fa-database"),
+            ],
+        },
+    ]
+
+    context = {
+        **admin.site.each_context(request),
+        "title": f"{patient} Resources",
+        "patient": patient,
+        "directory_sections": sections,
+    }
+    return render(request, "admin/patient_resources_directory.html", context)
 
 
 def fhir_interop_hub(request):

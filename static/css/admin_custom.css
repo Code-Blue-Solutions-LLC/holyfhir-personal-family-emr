@@ -366,6 +366,10 @@ body.app-patients.model-patientprofile.change-form
     overflow-wrap: anywhere;
 }
 
+.patient-overview-actions {
+    margin-top: 14px;
+}
+
 .patient-overview-stats {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 }

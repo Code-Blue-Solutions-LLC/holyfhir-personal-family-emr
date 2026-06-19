@@ -2,6 +2,10 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from clinical.models import Condition, Observation
+from documents.models import ClinicalDocument
+from patients.models import PatientProfile
+
 
 class SettingsBackupPageTests(TestCase):
     def setUp(self):
@@ -90,3 +94,32 @@ class SettingsBackupPageTests(TestCase):
         for label, url_name in expected_resources:
             self.assertContains(response, label)
             self.assertContains(response, reverse(url_name))
+
+    def test_patient_profile_links_to_patient_resources_directory(self):
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+
+        response = self.client.get(reverse("admin:patients_patientprofile_change", args=[patient.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "View all patient resources")
+        self.assertContains(response, reverse("patient_resources_directory", args=[patient.pk]))
+
+    def test_patient_resources_directory_lists_filtered_resource_links(self):
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+        other_patient = PatientProfile.objects.create(first_name="Other", last_name="Patient")
+        Condition.objects.create(patient=patient, name="Asthma")
+        Condition.objects.create(patient=other_patient, name="Migraine")
+        Observation.objects.create(patient=patient, name="Blood pressure")
+        ClinicalDocument.objects.create(patient=patient, title="Discharge summary")
+
+        response = self.client.get(reverse("patient_resources_directory", args=[patient.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Maya Rivera")
+        self.assertContains(response, "Conditions")
+        self.assertContains(response, "Vitals &amp; Labs")
+        self.assertContains(response, "Documents")
+        self.assertContains(response, f"{reverse('admin:clinical_condition_changelist')}?patient__id__exact={patient.pk}")
+        self.assertContains(response, f"{reverse('admin:clinical_observation_changelist')}?patient__id__exact={patient.pk}")
+        self.assertContains(response, f"{reverse('admin:documents_clinicaldocument_changelist')}?patient__id__exact={patient.pk}")
+        self.assertContains(response, "1 record")
