@@ -22,8 +22,8 @@
     [x] Device - lower-medium priority; implanted devices, medical equipment, and patient devices
     [ ] Binary - seen in older invalid snapshots; decide whether to import as document attachments or keep as snapshots
     [x] Medication - standalone medication catalog/details; maps to MedicationCatalog while MedicationRequest/MedicationStatement keep using patient Medication records
-    [ ] ImagingStudy - imaging studies/series/instances; link to DiagnosticReport, Encounter, Procedure, and Media where possible
-    [ ] Media - clinical photos, imaging key images, waveforms, or other captured media; link to Patient/Encounter/Procedure
+    [x] ImagingStudy - imaging studies/series/instances; link to DiagnosticReport, Encounter, Procedure, and Media where possible
+    [x] Media - clinical photos, imaging key images, waveforms, or other captured media; link to Patient/Encounter/Procedure
     [x] Goal - patient/care-team goals; link to CarePlan, Conditions, and lifecycle status
     [x] RiskAssessment - risk predictions and probabilities; link to Conditions/Observations/Encounter
     [x] ClinicalImpression - clinician assessment/synthesis; link to findings, problems, investigations, and plans
@@ -36,16 +36,16 @@
     [x] DeviceRequest - orders/requests for devices
     [x] DeviceUseStatement - patient/device usage history
     [x] NutritionOrder - dietary/oral/enteral/supplement orders; likely pairs with dietary component
-    [ ] MedicationKnowledge - drug knowledge/catalog metadata; probably snapshot/generic first, first-class later only if needed
+    [x] MedicationKnowledge - drug knowledge/catalog metadata; probably snapshot/generic first, first-class later only if needed
     [ ] Medication-related definitional resources - MedicinalProduct*, Substance*, MedicationKnowledge; probably snapshot/generic unless building a medication knowledge base
-    [ ] ImmunizationEvaluation - immunization validity/status evaluation
+    [x] ImmunizationEvaluation - immunization validity/status evaluation
     [x] ImmunizationRecommendation - vaccine forecast/recommendations
     [x] QuestionnaireResponse - patient-entered forms and assessments
     [ ] Questionnaire - form definitions for QuestionnaireResponse
     [x] Communication - messages/communications about care
     [x] CommunicationRequest - requested communications
-    [ ] RequestGroup - grouped/conditional requests and plans
-    [ ] GuidanceResponse - decision-support output
+    [x] RequestGroup - grouped/conditional requests and plans
+    [x] GuidanceResponse - decision-support output
     [x] Flag - warnings/alerts on patient records
     [x] List - FHIR lists/groupings of clinical resources
     [ ] Composition - structured clinical documents; may map to ClinicalDocument or document sections
@@ -65,8 +65,8 @@
     [x] ExplanationOfBenefit - EOB/claims summary, service lines, adjudication totals, and payment summaries
     [x] InsurancePlan - payer plan/product definitions and benefit summaries
     [ ] Claim, ClaimResponse, Account, Invoice - remaining financial/insurance resources; optional personal finance/claims area
-    [ ] SupplyRequest and SupplyDelivery - supplies and delivery events
-    [ ] MolecularSequence - genetics/genomics; snapshot/generic unless genomics UI is planned
+    [x] SupplyRequest and SupplyDelivery - supplies and delivery events
+    [x] MolecularSequence - genetics/genomics; snapshot/generic unless genomics UI is planned
     [ ] ResearchStudy and ResearchSubject - research participation; optional
     [x] Generic FHIR resource fallback - accept every FHIR resourceType into valid FHIRResourceSnapshot even when no first-class model exists
     [ ] Unsupported-resource dashboard - show resource types/counts imported only as snapshots, with "promote to model later" notes

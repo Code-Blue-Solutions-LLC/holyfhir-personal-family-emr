@@ -32,16 +32,21 @@ Status legend:
 - `ExplanationOfBenefit` -> `clinical.ExplanationOfBenefit`
 - `FamilyMemberHistory` -> `clinical.FamilyMemberHistory`
 - `Flag` -> `clinical.Flag`
+- `GuidanceResponse` -> `clinical.GuidanceResponse`
 - `Group` -> `clinical.FHIRGroup`
 - `Goal` -> `clinical.Goal`
+- `ImagingStudy` -> `clinical.ImagingStudy`
 - `Immunization` -> `clinical.Immunization`
+- `ImmunizationEvaluation` -> `clinical.ImmunizationEvaluation`
 - `ImmunizationRecommendation` -> `clinical.ImmunizationRecommendation`
 - `InsurancePlan` -> `clinical.InsurancePlan`
 - `List` -> `clinical.FHIRList`
 - `Location` -> `clinical.Location`
+- `Media` -> `clinical.Media`
 - `Medication` -> `clinical.MedicationCatalog`
 - `MedicationAdministration` -> `clinical.MedicationAdministration`
 - `MedicationDispense` -> `clinical.MedicationDispense`
+- `MedicationKnowledge` -> `clinical.MedicationKnowledge`
 - `MedicationRequest` -> `clinical.Medication`
 - `MedicationStatement` -> `clinical.Medication`
 - `NutritionOrder` -> `clinical.NutritionOrder`
@@ -53,10 +58,15 @@ Status legend:
 - `PractitionerRole` -> `clinical.PractitionerRole`
 - `Procedure` -> `clinical.Procedure`
 - `QuestionnaireResponse` -> `clinical.QuestionnaireResponse`
+- `RequestGroup` -> `clinical.RequestGroup`
 - `RelatedPerson` -> `clinical.RelatedPerson`
 - `RiskAssessment` -> `clinical.RiskAssessment`
 - `ServiceRequest` -> `clinical.ServiceRequest`
 - `Specimen` -> `clinical.Specimen`
+- `SupplyDelivery` -> `clinical.SupplyDelivery`
+- `SupplyRequest` -> `clinical.SupplyRequest`
+- `VisionPrescription` -> `clinical.VisionPrescription`
+- `MolecularSequence` -> `clinical.MolecularSequence`
 
 ## Foundation
 
@@ -182,13 +192,13 @@ Status legend:
 | Resource | Status | Notes |
 | --- | --- | --- |
 | `Observation` | First-class | Vitals/labs/results. |
-| `Media` | Planned | Clinical images/photos/media. |
+| `Media` | First-class | Clinical images/photos/media. |
 | `DiagnosticReport` | First-class | Diagnostic reports with encounter, requests, specimens, observations, performers, interpreters, and presented forms. |
 | `Specimen` | First-class | Lab specimen details. |
 | `BodyStructure` | First-class | Anatomical/body-site detail. |
-| `ImagingStudy` | Planned | Imaging study/series/instance data. |
+| `ImagingStudy` | First-class | Imaging study/series/instance data. |
 | `QuestionnaireResponse` | First-class | Patient-entered forms and assessments. |
-| `MolecularSequence` | Snapshot candidate | Genomics; first-class only if genomics UI is planned. |
+| `MolecularSequence` | First-class | Genomics sequence, variant, repository, and quality details. |
 
 ### Medications
 
@@ -199,9 +209,9 @@ Status legend:
 | `MedicationDispense` | First-class | Pharmacy/supply dispense event. |
 | `MedicationStatement` | First-class | Currently maps into local `Medication`. |
 | `Medication` | First-class | Standalone medication catalog/details; maps to `MedicationCatalog`, separate from requests/statements. |
-| `MedicationKnowledge` | Planned | Drug knowledge/catalog metadata; probably snapshot/generic first. |
+| `MedicationKnowledge` | First-class | Drug knowledge/catalog metadata, ingredients, monitoring, and classifications. |
 | `Immunization` | First-class | Vaccination records. |
-| `ImmunizationEvaluation` | Planned | Immunization validity/status evaluation. |
+| `ImmunizationEvaluation` | First-class | Immunization validity/status evaluation. |
 | `ImmunizationRecommendation` | First-class | Vaccine forecast/recommendations. |
 
 ### Care Provision
@@ -213,9 +223,9 @@ Status legend:
 | `Goal` | First-class | Patient/care goals with addressed concerns, targets, and outcomes. |
 | `ServiceRequest` | First-class | Orders/referrals/requested services. |
 | `NutritionOrder` | First-class | Dietary/oral/enteral/supplement orders. |
-| `VisionPrescription` | Planned | Vision prescription details. |
+| `VisionPrescription` | First-class | Vision prescription details. |
 | `RiskAssessment` | First-class | Risk predictions/probabilities with basis records and mitigation. |
-| `RequestGroup` | Planned | Grouped/conditional requests and plans. |
+| `RequestGroup` | First-class | Grouped/conditional requests and plans. |
 
 ### Request & Response
 
@@ -225,9 +235,9 @@ Status legend:
 | `CommunicationRequest` | First-class | Requested communication. |
 | `DeviceRequest` | First-class | Device orders/requests with reasons, performers, and timing. |
 | `DeviceUseStatement` | First-class | Patient/device usage history. |
-| `GuidanceResponse` | Planned | Decision-support response. |
-| `SupplyRequest` | Planned | Supply request. |
-| `SupplyDelivery` | Planned | Supply delivery event. |
+| `GuidanceResponse` | First-class | Decision-support response. |
+| `SupplyRequest` | First-class | Supply request. |
+| `SupplyDelivery` | First-class | Supply delivery event. |
 
 ## Financial
 

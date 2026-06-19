@@ -22,14 +22,20 @@ from .models import (
     FHIRGroup,
     FHIRGroupMember,
     FHIRList,
+    GuidanceResponse,
     Goal,
+    ImagingStudy,
     Immunization,
+    ImmunizationEvaluation,
     ImmunizationRecommendation,
     Location,
+    Media,
     MedicationAdministration,
     MedicationCatalog,
     MedicationDispense,
+    MedicationKnowledge,
     Medication,
+    MolecularSequence,
     NutritionOrder,
     Observation,
     Organization,
@@ -52,6 +58,10 @@ from .models import (
     Flag,
     InsurancePlan,
     QuestionnaireResponse,
+    RequestGroup,
+    SupplyDelivery,
+    SupplyRequest,
+    VisionPrescription,
 )
 
 
@@ -499,6 +509,140 @@ class QuestionnaireResponseAdmin(admin.ModelAdmin):
     @admin.display(description="Questionnaire response", ordering="questionnaire")
     def response_label(self, obj):
         return obj.questionnaire or f"Questionnaire Response #{obj.pk}"
+
+
+@admin.register(Media)
+class MediaAdmin(admin.ModelAdmin):
+    list_display = ("id", "media_label", "patient", "status", "media_type", "modality", "created_datetime")
+    list_display_links = ("media_label",)
+    search_fields = ("media_type", "modality", "view", "body_site", "content_title", "content_url", "notes")
+    list_filter = ("patient", "status", "media_type", "modality")
+    ordering = ("-created_datetime", "-issued")
+    autocomplete_fields = ["patient", "encounter", "operator_practitioner", "device"]
+    filter_horizontal = ("based_on_service_requests",)
+
+    @admin.display(description="Media", ordering="content_title")
+    def media_label(self, obj):
+        return obj.content_title or obj.media_type or f"Media #{obj.pk}"
+
+
+@admin.register(ImagingStudy)
+class ImagingStudyAdmin(admin.ModelAdmin):
+    list_display = ("id", "study_label", "patient", "status", "started", "procedure_code")
+    list_display_links = ("study_label",)
+    search_fields = ("description", "procedure_code", "reason", "modality_summary", "series_summary", "notes")
+    list_filter = ("patient", "status", "procedure_code")
+    ordering = ("-started",)
+    autocomplete_fields = ["patient", "encounter", "referrer_practitioner"]
+    filter_horizontal = ("endpoint_organizations", "based_on_service_requests", "interpreter_practitioners")
+
+    @admin.display(description="Imaging study", ordering="description")
+    def study_label(self, obj):
+        return obj.description or obj.procedure_code or f"Imaging Study #{obj.pk}"
+
+
+@admin.register(MolecularSequence)
+class MolecularSequenceAdmin(admin.ModelAdmin):
+    list_display = ("id", "sequence_label", "patient", "sequence_type", "specimen", "performer_organization")
+    list_display_links = ("sequence_label",)
+    search_fields = ("sequence_type", "observed_sequence", "reference_sequence_summary", "variant_summary", "repository_summary")
+    list_filter = ("patient", "sequence_type", "performer_organization")
+    ordering = ("patient", "sequence_type")
+    autocomplete_fields = ["patient", "specimen", "device", "performer_organization"]
+
+    @admin.display(description="Molecular sequence", ordering="sequence_type")
+    def sequence_label(self, obj):
+        return obj.sequence_type or f"Molecular Sequence #{obj.pk}"
+
+
+@admin.register(MedicationKnowledge)
+class MedicationKnowledgeAdmin(admin.ModelAdmin):
+    list_display = ("id", "knowledge_label", "status", "dose_form", "product_type")
+    list_display_links = ("knowledge_label",)
+    search_fields = ("code", "dose_form", "synonym", "product_type", "ingredient_summary", "contraindication_summary", "notes")
+    list_filter = ("status", "dose_form", "product_type")
+    ordering = ("code",)
+    autocomplete_fields = ["medication"]
+    filter_horizontal = ("associated_medications",)
+
+    @admin.display(description="Medication knowledge", ordering="code")
+    def knowledge_label(self, obj):
+        return obj.code or str(obj.medication or f"Medication Knowledge #{obj.pk}")
+
+
+@admin.register(ImmunizationEvaluation)
+class ImmunizationEvaluationAdmin(admin.ModelAdmin):
+    list_display = ("id", "evaluation_label", "patient", "status", "target_disease", "dose_status")
+    list_display_links = ("evaluation_label",)
+    search_fields = ("target_disease", "dose_status", "dose_status_reason", "description", "series", "notes")
+    list_filter = ("patient", "status", "target_disease", "dose_status", "authority")
+    ordering = ("patient", "target_disease")
+    autocomplete_fields = ["patient", "immunization", "authority"]
+
+    @admin.display(description="Evaluation", ordering="target_disease")
+    def evaluation_label(self, obj):
+        return obj.target_disease or obj.dose_status or f"Immunization Evaluation #{obj.pk}"
+
+
+@admin.register(VisionPrescription)
+class VisionPrescriptionAdmin(admin.ModelAdmin):
+    list_display = ("id", "patient", "status", "date_written", "prescriber_practitioner")
+    list_display_links = ("status",)
+    search_fields = ("status", "lens_summary", "notes")
+    list_filter = ("patient", "status", "prescriber_practitioner")
+    ordering = ("-date_written", "-created_datetime")
+    autocomplete_fields = ["patient", "encounter", "prescriber_practitioner", "prescriber_role"]
+
+
+@admin.register(RequestGroup)
+class RequestGroupAdmin(admin.ModelAdmin):
+    list_display = ("id", "group_label", "patient", "status", "intent", "priority", "authored_on")
+    list_display_links = ("group_label",)
+    search_fields = ("code", "reason", "action_summary", "notes")
+    list_filter = ("patient", "status", "intent", "priority")
+    ordering = ("-authored_on",)
+    autocomplete_fields = ["patient", "encounter", "author_practitioner"]
+    filter_horizontal = ("based_on_service_requests", "replaces")
+
+    @admin.display(description="Request group", ordering="code")
+    def group_label(self, obj):
+        return obj.code or f"Request Group #{obj.pk}"
+
+
+@admin.register(GuidanceResponse)
+class GuidanceResponseAdmin(admin.ModelAdmin):
+    list_display = ("id", "guidance_label", "patient", "status", "occurrence_datetime")
+    list_display_links = ("guidance_label",)
+    search_fields = ("module_uri", "status", "reason", "result_summary", "data_requirement_summary", "notes")
+    list_filter = ("patient", "status", "performer_organization")
+    ordering = ("-occurrence_datetime",)
+    autocomplete_fields = ["patient", "encounter", "performer_organization"]
+
+    @admin.display(description="Guidance", ordering="module_uri")
+    def guidance_label(self, obj):
+        return obj.module_uri or obj.status or f"Guidance Response #{obj.pk}"
+
+
+@admin.register(SupplyRequest)
+class SupplyRequestAdmin(admin.ModelAdmin):
+    list_display = ("id", "item", "patient", "status", "priority", "authored_on")
+    list_display_links = ("item",)
+    search_fields = ("item", "category", "reason", "quantity", "notes")
+    list_filter = ("patient", "status", "priority", "category")
+    ordering = ("-authored_on",)
+    autocomplete_fields = ["patient", "requester_practitioner", "requester_organization", "supplier_organization", "deliver_to_location"]
+    filter_horizontal = ("based_on_service_requests",)
+
+
+@admin.register(SupplyDelivery)
+class SupplyDeliveryAdmin(admin.ModelAdmin):
+    list_display = ("id", "item", "patient", "status", "delivery_type", "occurrence_start")
+    list_display_links = ("item",)
+    search_fields = ("item", "quantity", "delivery_type", "notes")
+    list_filter = ("patient", "status", "delivery_type", "supplier_organization")
+    ordering = ("-occurrence_start",)
+    autocomplete_fields = ["patient", "supplier_practitioner", "supplier_organization", "destination"]
+    filter_horizontal = ("based_on_supply_requests", "part_of_deliveries", "receivers")
 
 
 @admin.register(Specimen)

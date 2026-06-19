@@ -1934,8 +1934,8 @@ class FHIRImportTests(TestCase):
     def test_unsupported_resource_is_preserved_as_valid_snapshot_only(self):
         result = import_fhir_json(
             {
-                "resourceType": "VisionPrescription",
-                "id": "vision-1",
+                "resourceType": "Claim",
+                "id": "claim-1",
                 "status": "active",
                 "patient": {"reference": "Patient/missing"},
             }
@@ -1949,7 +1949,7 @@ class FHIRImportTests(TestCase):
         self.assertTrue(snapshot.is_valid)
         self.assertEqual(snapshot.import_status, FHIRResourceSnapshot.IMPORT_STATUS_SNAPSHOT_ONLY)
         self.assertEqual(snapshot.validation_errors, [])
-        self.assertEqual(snapshot.resource_type, "VisionPrescription")
+        self.assertEqual(snapshot.resource_type, "Claim")
 
     def test_loads_fhir_json_rejects_invalid_json(self):
         with self.assertRaises(ValueError):

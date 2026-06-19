@@ -32,14 +32,20 @@ from clinical.models import (
     FHIRGroupMember,
     FHIRList,
     Flag,
+    GuidanceResponse,
     Goal,
+    ImagingStudy,
     Immunization,
+    ImmunizationEvaluation,
     ImmunizationRecommendation,
     Location,
+    Media,
     MedicationAdministration,
     MedicationCatalog,
     MedicationDispense,
+    MedicationKnowledge,
     Medication,
+    MolecularSequence,
     NutritionOrder,
     Observation,
     Organization,
@@ -60,6 +66,10 @@ from clinical.models import (
     ExplanationOfBenefit,
     InsurancePlan,
     QuestionnaireResponse,
+    RequestGroup,
+    SupplyDelivery,
+    SupplyRequest,
+    VisionPrescription,
 )
 from documents.models import ClinicalDocument
 from patients.models import PatientProfile
@@ -78,14 +88,20 @@ SUPPORTED_RESOURCE_TYPES = {
     "DiagnosticReport",
     "FamilyMemberHistory",
     "Flag",
+    "GuidanceResponse",
+    "ImagingStudy",
     "List",
     "MedicationStatement",
     "MedicationRequest",
     "Medication",
     "MedicationAdministration",
     "MedicationDispense",
+    "MedicationKnowledge",
     "Immunization",
+    "ImmunizationEvaluation",
     "ImmunizationRecommendation",
+    "Media",
+    "MolecularSequence",
     "NutritionOrder",
     "Observation",
     "Encounter",
@@ -108,10 +124,14 @@ SUPPORTED_RESOURCE_TYPES = {
     "Person",
     "Procedure",
     "QuestionnaireResponse",
+    "RequestGroup",
     "RelatedPerson",
     "RiskAssessment",
     "ServiceRequest",
     "Specimen",
+    "SupplyDelivery",
+    "SupplyRequest",
+    "VisionPrescription",
     "Practitioner",
     "Organization",
     "Location",
@@ -122,6 +142,7 @@ SUPPORTED_RESOURCE_TYPES = {
 PATIENTLESS_RESOURCE_TYPES = {
     "Group",
     "InsurancePlan",
+    "MedicationKnowledge",
     "Medication",
     "Person",
     "Practitioner",
@@ -175,6 +196,7 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
             importer = {
                 "Group": _import_group,
                 "InsurancePlan": _import_insurance_plan,
+                "MedicationKnowledge": _import_medication_knowledge,
                 "Medication": _import_medication_catalog,
                 "Person": _import_person,
                 "Practitioner": _import_practitioner,
@@ -229,13 +251,18 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 "DiagnosticReport": _import_diagnostic_report,
                 "FamilyMemberHistory": _import_family_member_history,
                 "Flag": _import_flag,
+                "GuidanceResponse": _import_guidance_response,
+                "ImagingStudy": _import_imaging_study,
                 "List": _import_fhir_list,
+                "Media": _import_media,
                 "MedicationAdministration": _import_medication_administration,
                 "MedicationDispense": _import_medication_dispense,
                 "MedicationStatement": _import_medication_statement,
                 "MedicationRequest": _import_medication_request,
                 "Immunization": _import_immunization,
+                "ImmunizationEvaluation": _import_immunization_evaluation,
                 "ImmunizationRecommendation": _import_immunization_recommendation,
+                "MolecularSequence": _import_molecular_sequence,
                 "NutritionOrder": _import_nutrition_order,
                 "Observation": _import_observation,
                 "Encounter": _import_encounter,
@@ -253,10 +280,14 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 "PractitionerRole": _import_practitioner_role,
                 "Procedure": _import_procedure,
                 "QuestionnaireResponse": _import_questionnaire_response,
+                "RequestGroup": _import_request_group,
                 "RelatedPerson": _import_related_person,
                 "RiskAssessment": _import_risk_assessment,
                 "ServiceRequest": _import_service_request,
                 "Specimen": _import_specimen,
+                "SupplyDelivery": _import_supply_delivery,
+                "SupplyRequest": _import_supply_request,
+                "VisionPrescription": _import_vision_prescription,
                 "Practitioner": _import_practitioner,
                 "Organization": _import_organization,
                 "Location": _import_location,
@@ -587,6 +618,26 @@ def _import_medication_catalog(resource, patient=None):
     return obj, created
 
 
+def _import_medication_knowledge(resource, patient=None):
+    obj = _object_for_resource(resource, "clinical.MedicationKnowledge") or MedicationKnowledge()
+    obj.medication = _reference_as(resource.get("code"), MedicationCatalog)
+    obj.status = resource.get("status") or ""
+    obj.code = _codeable_text(resource.get("code")) or "Medication knowledge"
+    obj.dose_form = _codeable_text(resource.get("doseForm")) or ""
+    obj.amount = _age_text(resource.get("amount")) or _ratio_text(resource.get("amount"))
+    obj.synonym = "\n".join(resource.get("synonym") or [])
+    obj.product_type = ", ".join(text for text in (_codeable_text(v) for v in resource.get("productType") or []) if text)
+    obj.ingredient_summary = _medication_knowledge_ingredient_summary(resource)
+    obj.contraindication_summary = "\n".join(_display(ref) for ref in resource.get("contraindication") or [])
+    obj.monitoring_summary = _medication_knowledge_monitoring_summary(resource)
+    obj.medicine_classification_summary = _medication_knowledge_classification_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.associated_medications.set([o for o in (_reference_as(ref, MedicationCatalog) for ref in resource.get("associatedMedication") or []) if o])
+    return obj, created
+
+
 def _import_medication_administration(resource, patient):
     obj = _object_for_resource(resource, "clinical.MedicationAdministration") or MedicationAdministration(patient=patient)
     effective_period = resource.get("effectivePeriod") or {}
@@ -665,6 +716,25 @@ def _import_immunization_recommendation(resource, patient):
     created = obj.pk is None
     obj.save()
     _sync_immunization_recommendation_relationships(resource, obj)
+    return obj, created
+
+
+def _import_immunization_evaluation(resource, patient):
+    obj = _object_for_resource(resource, "clinical.ImmunizationEvaluation") or ImmunizationEvaluation(patient=patient)
+    obj.patient = patient
+    obj.immunization = _reference_as(resource.get("immunizationEvent"), Immunization)
+    obj.authority = _reference_as(resource.get("authority"), Organization)
+    obj.status = resource.get("status") or ""
+    obj.target_disease = _codeable_text(resource.get("targetDisease")) or ""
+    obj.dose_status = _codeable_text(resource.get("doseStatus")) or ""
+    obj.dose_status_reason = ", ".join(text for text in (_codeable_text(v) for v in resource.get("doseStatusReason") or []) if text)
+    obj.description = resource.get("description") or ""
+    obj.series = resource.get("series") or ""
+    obj.dose_number = str(resource.get("doseNumberPositiveInt") or resource.get("doseNumberString") or "")
+    obj.series_doses = str(resource.get("seriesDosesPositiveInt") or resource.get("seriesDosesString") or "")
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
     return obj, created
 
 
@@ -870,6 +940,175 @@ def _import_questionnaire_response(resource, patient):
     created = obj.pk is None
     obj.save()
     _sync_questionnaire_response_relationships(resource, obj)
+    return obj, created
+
+
+def _import_media(resource, patient):
+    obj = _object_for_resource(resource, "clinical.Media") or Media(patient=patient)
+    created_period = resource.get("createdPeriod") or {}
+    content = resource.get("content") or {}
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.operator_practitioner = _reference_as(resource.get("operator"), Practitioner)
+    obj.device = _reference_as(resource.get("device"), Device)
+    obj.status = resource.get("status") or ""
+    obj.media_type = _codeable_text(resource.get("type")) or ""
+    obj.modality = _codeable_text(resource.get("modality")) or ""
+    obj.view = _codeable_text(resource.get("view")) or ""
+    obj.created_datetime = _datetime(resource.get("createdDateTime") or created_period.get("start"))
+    obj.issued = _datetime(resource.get("issued"))
+    obj.body_site = _codeable_text(resource.get("bodySite")) or ""
+    obj.device_name = resource.get("deviceName") or ""
+    obj.content_title = content.get("title") or ""
+    obj.content_type = content.get("contentType") or ""
+    obj.content_url = content.get("url") or ""
+    obj.dimension_summary = _media_dimension_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.based_on_service_requests.set([o for o in (_reference_as(ref, ServiceRequest) for ref in resource.get("basedOn") or []) if o])
+    return obj, created
+
+
+def _import_imaging_study(resource, patient):
+    obj = _object_for_resource(resource, "clinical.ImagingStudy") or ImagingStudy(patient=patient)
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.referrer_practitioner = _reference_as(resource.get("referrer"), Practitioner)
+    obj.status = resource.get("status") or ""
+    obj.started = _datetime(resource.get("started"))
+    obj.modality_summary = ", ".join(text for text in (_codeable_text(v) for v in resource.get("modality") or []) if text)
+    obj.procedure_code = _codeable_text(_first(resource.get("procedureCode"))) or ""
+    obj.location_display = _display(resource.get("location"))
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.description = resource.get("description") or ""
+    obj.series_summary = _imaging_series_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.based_on_service_requests.set([o for o in (_reference_as(ref, ServiceRequest) for ref in resource.get("basedOn") or []) if o])
+    obj.interpreter_practitioners.set([o for o in (_reference_as(ref, Practitioner) for ref in resource.get("interpreter") or []) if o])
+    return obj, created
+
+
+def _import_molecular_sequence(resource, patient):
+    obj = _object_for_resource(resource, "clinical.MolecularSequence") or MolecularSequence(patient=patient)
+    obj.patient = patient
+    obj.specimen = _reference_as(resource.get("specimen"), Specimen)
+    obj.device = _reference_as(resource.get("device"), Device)
+    obj.performer_organization = _reference_as(resource.get("performer"), Organization)
+    obj.sequence_type = resource.get("type") or ""
+    obj.coordinate_system = resource.get("coordinateSystem")
+    obj.observed_sequence = resource.get("observedSeq") or ""
+    obj.reference_sequence_summary = _molecular_reference_summary(resource)
+    obj.variant_summary = _molecular_variant_summary(resource)
+    obj.repository_summary = _molecular_repository_summary(resource)
+    obj.quality_summary = _molecular_quality_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_vision_prescription(resource, patient):
+    obj = _object_for_resource(resource, "clinical.VisionPrescription") or VisionPrescription(patient=patient)
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.prescriber_practitioner = _reference_as(resource.get("prescriber"), Practitioner)
+    obj.prescriber_role = _reference_as(resource.get("prescriber"), PractitionerRole)
+    obj.status = resource.get("status") or ""
+    obj.created_datetime = _datetime(resource.get("created"))
+    obj.date_written = _datetime(resource.get("dateWritten"))
+    obj.lens_summary = _vision_lens_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_request_group(resource, patient):
+    obj = _object_for_resource(resource, "clinical.RequestGroup") or RequestGroup(patient=patient)
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.author_practitioner = _reference_as(resource.get("author"), Practitioner)
+    obj.status = resource.get("status") or ""
+    obj.intent = resource.get("intent") or ""
+    obj.priority = resource.get("priority") or ""
+    obj.code = _codeable_text(resource.get("code")) or ""
+    obj.authored_on = _datetime(resource.get("authoredOn"))
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.action_summary = _request_group_action_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.based_on_service_requests.set([o for o in (_reference_as(ref, ServiceRequest) for ref in resource.get("basedOn") or []) if o])
+    obj.replaces.set([o for o in (_reference_as(ref, RequestGroup) for ref in resource.get("replaces") or []) if o])
+    return obj, created
+
+
+def _import_guidance_response(resource, patient):
+    obj = _object_for_resource(resource, "clinical.GuidanceResponse") or GuidanceResponse(patient=patient)
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.performer_organization = _reference_as(resource.get("performer"), Organization)
+    obj.request_identifier = (resource.get("requestIdentifier") or {}).get("value") or ""
+    obj.module_uri = resource.get("moduleUri") or resource.get("moduleCanonical") or _codeable_text(resource.get("moduleCodeableConcept")) or ""
+    obj.status = resource.get("status") or ""
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.occurrence_datetime = _datetime(resource.get("occurrenceDateTime"))
+    obj.output_parameters = _display(resource.get("outputParameters"))
+    obj.result_summary = _display(resource.get("result"))
+    obj.data_requirement_summary = _guidance_data_requirement_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
+def _import_supply_request(resource, patient):
+    obj = _object_for_resource(resource, "clinical.SupplyRequest") or SupplyRequest(patient=patient)
+    occurrence_period = resource.get("occurrencePeriod") or {}
+    obj.patient = patient or _reference_as(resource.get("deliverTo"), PatientProfile)
+    obj.requester_practitioner = _reference_as(resource.get("requester"), Practitioner)
+    obj.requester_organization = _reference_as(resource.get("requester"), Organization)
+    obj.supplier_organization = _reference_as(_first(resource.get("supplier")), Organization)
+    obj.deliver_to_location = _reference_as(resource.get("deliverTo"), Location)
+    obj.status = resource.get("status") or ""
+    obj.category = _codeable_text(resource.get("category")) or ""
+    obj.priority = resource.get("priority") or ""
+    obj.item = _codeable_text(resource.get("itemCodeableConcept")) or _display(resource.get("itemReference")) or "Supply request"
+    obj.quantity = _age_text(resource.get("quantity"))
+    obj.authored_on = _datetime(resource.get("authoredOn"))
+    obj.occurrence_start = _datetime(resource.get("occurrenceDateTime") or occurrence_period.get("start"))
+    obj.occurrence_end = _datetime(occurrence_period.get("end"))
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.based_on_service_requests.set([o for o in (_reference_as(ref, ServiceRequest) for ref in resource.get("basedOn") or []) if o])
+    return obj, created
+
+
+def _import_supply_delivery(resource, patient):
+    obj = _object_for_resource(resource, "clinical.SupplyDelivery") or SupplyDelivery(patient=patient)
+    supplied_item = resource.get("suppliedItem") or {}
+    occurrence_period = resource.get("occurrencePeriod") or {}
+    obj.patient = patient
+    obj.supplier_practitioner = _reference_as(resource.get("supplier"), Practitioner)
+    obj.supplier_organization = _reference_as(resource.get("supplier"), Organization)
+    obj.destination = _reference_as(resource.get("destination"), Location)
+    obj.status = resource.get("status") or ""
+    obj.delivery_type = _codeable_text(resource.get("type")) or ""
+    obj.item = _codeable_text(supplied_item.get("itemCodeableConcept")) or _display(supplied_item.get("itemReference"))
+    obj.quantity = _age_text(supplied_item.get("quantity"))
+    obj.occurrence_start = _datetime(resource.get("occurrenceDateTime") or occurrence_period.get("start"))
+    obj.occurrence_end = _datetime(occurrence_period.get("end"))
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    obj.based_on_supply_requests.set([o for o in (_reference_as(ref, SupplyRequest) for ref in resource.get("basedOn") or []) if o])
+    obj.part_of_deliveries.set([o for o in (_reference_as(ref, SupplyDelivery) for ref in resource.get("partOf") or []) if o])
+    obj.receivers.set([o for o in (_reference_as(ref, Practitioner) for ref in resource.get("receiver") or []) if o])
     return obj, created
 
 
@@ -1436,14 +1675,20 @@ def _object_for_resource(resource, django_model):
         FHIRGroupMember,
         FHIRList,
         Flag,
+        GuidanceResponse,
         Goal,
+        ImagingStudy,
         InsurancePlan,
         Medication,
         MedicationAdministration,
         MedicationCatalog,
         MedicationDispense,
+        MedicationKnowledge,
         Immunization,
+        ImmunizationEvaluation,
         ImmunizationRecommendation,
+        Media,
+        MolecularSequence,
         NutritionOrder,
         Observation,
         Specimen,
@@ -1466,9 +1711,13 @@ def _object_for_resource(resource, django_model):
         Procedure,
         ProcedurePerformer,
         QuestionnaireResponse,
+        RequestGroup,
         RelatedPerson,
         RiskAssessment,
         ServiceRequest,
+        SupplyDelivery,
+        SupplyRequest,
+        VisionPrescription,
         Organization,
         Location,
     ):
@@ -1499,16 +1748,22 @@ def _object_for_reference(reference):
         "DeviceUseStatement": "clinical.DeviceUseStatement",
         "FamilyMemberHistory": "clinical.FamilyMemberHistory",
         "Flag": "clinical.Flag",
+        "GuidanceResponse": "clinical.GuidanceResponse",
         "Group": "clinical.FHIRGroup",
         "Goal": "clinical.Goal",
+        "ImagingStudy": "clinical.ImagingStudy",
         "Immunization": "clinical.Immunization",
+        "ImmunizationEvaluation": "clinical.ImmunizationEvaluation",
         "ImmunizationRecommendation": "clinical.ImmunizationRecommendation",
         "List": "clinical.FHIRList",
+        "Media": "clinical.Media",
         "Medication": "clinical.MedicationCatalog",
         "MedicationAdministration": "clinical.MedicationAdministration",
         "MedicationDispense": "clinical.MedicationDispense",
+        "MedicationKnowledge": "clinical.MedicationKnowledge",
         "MedicationRequest": "clinical.Medication",
         "MedicationStatement": "clinical.Medication",
+        "MolecularSequence": "clinical.MolecularSequence",
         "NutritionOrder": "clinical.NutritionOrder",
         "Observation": "clinical.Observation",
         "Communication": "clinical.Communication",
@@ -1523,10 +1778,14 @@ def _object_for_reference(reference):
         "InsurancePlan": "clinical.InsurancePlan",
         "Procedure": "clinical.Procedure",
         "QuestionnaireResponse": "clinical.QuestionnaireResponse",
+        "RequestGroup": "clinical.RequestGroup",
         "RelatedPerson": "clinical.RelatedPerson",
         "RiskAssessment": "clinical.RiskAssessment",
         "ServiceRequest": "clinical.ServiceRequest",
         "Specimen": "clinical.Specimen",
+        "SupplyDelivery": "clinical.SupplyDelivery",
+        "SupplyRequest": "clinical.SupplyRequest",
+        "VisionPrescription": "clinical.VisionPrescription",
         "DocumentReference": "documents.ClinicalDocument",
         "Patient": "patients.PatientProfile",
     }
@@ -2060,6 +2319,173 @@ def _insurance_plan_benefit_summary(resource):
         plan_text = _codeable_text(plan.get("type")) or plan.get("name") or ""
         if plan_text:
             lines.append(plan_text)
+    return "\n".join(lines)
+
+
+def _media_dimension_summary(resource):
+    parts = []
+    for label in ("height", "width", "frames", "duration"):
+        if resource.get(label) is not None:
+            parts.append(f"{label}: {resource[label]}")
+    return " / ".join(parts)
+
+
+def _imaging_series_summary(resource):
+    lines = []
+    for series in resource.get("series") or []:
+        parts = [
+            series.get("uid") or "",
+            _codeable_text(series.get("modality")),
+            series.get("description") or "",
+            f"{series.get('numberOfInstances')} instances" if series.get("numberOfInstances") else "",
+        ]
+        line = " / ".join(part for part in parts if part)
+        if line:
+            lines.append(line)
+        for instance in series.get("instance") or []:
+            instance_line = " / ".join(part for part in [instance.get("uid"), _codeable_text(instance.get("sopClass")), instance.get("title")] if part)
+            if instance_line:
+                lines.append(f"  {instance_line}")
+    return "\n".join(lines)
+
+
+def _molecular_reference_summary(resource):
+    reference = resource.get("referenceSeq") or {}
+    return " / ".join(
+        part
+        for part in [
+            _codeable_text(reference.get("chromosome")),
+            reference.get("genomeBuild") or "",
+            reference.get("referenceSeqId", {}).get("value") if isinstance(reference.get("referenceSeqId"), dict) else "",
+            str(reference.get("windowStart") or ""),
+            str(reference.get("windowEnd") or ""),
+        ]
+        if part
+    )
+
+
+def _molecular_variant_summary(resource):
+    lines = []
+    for variant in resource.get("variant") or []:
+        parts = [
+            str(variant.get("start") or ""),
+            str(variant.get("end") or ""),
+            variant.get("observedAllele") or "",
+            variant.get("referenceAllele") or "",
+            variant.get("cigar") or "",
+        ]
+        line = " / ".join(part for part in parts if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _molecular_repository_summary(resource):
+    lines = []
+    for repo in resource.get("repository") or []:
+        line = " / ".join(part for part in [repo.get("type"), repo.get("url"), repo.get("name"), repo.get("datasetId"), repo.get("variantsetId")] if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _molecular_quality_summary(resource):
+    lines = []
+    for quality in resource.get("quality") or []:
+        line = " / ".join(
+            part
+            for part in [
+                quality.get("type"),
+                _codeable_text(quality.get("standardSequence")),
+                str(quality.get("score", {}).get("value") if isinstance(quality.get("score"), dict) else ""),
+                quality.get("method", {}).get("text") if isinstance(quality.get("method"), dict) else "",
+            ]
+            if part
+        )
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _medication_knowledge_ingredient_summary(resource):
+    lines = []
+    for ingredient in resource.get("ingredient") or []:
+        parts = [
+            _codeable_text(ingredient.get("itemCodeableConcept")) or _display(ingredient.get("itemReference")),
+            "active" if ingredient.get("isActive") else "",
+            _ratio_text(ingredient.get("strength")),
+        ]
+        line = " / ".join(part for part in parts if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _medication_knowledge_monitoring_summary(resource):
+    lines = []
+    for program in resource.get("monitoringProgram") or []:
+        line = " / ".join(part for part in [_codeable_text(program.get("type")), program.get("name") or ""] if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _medication_knowledge_classification_summary(resource):
+    lines = []
+    for item in resource.get("medicineClassification") or []:
+        classification = ", ".join(text for text in (_codeable_text(v) for v in item.get("classification") or []) if text)
+        line = " / ".join(part for part in [_codeable_text(item.get("type")), classification] if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _vision_lens_summary(resource):
+    lines = []
+    for lens in resource.get("lensSpecification") or []:
+        parts = [
+            _codeable_text(lens.get("product")),
+            lens.get("eye") or "",
+            f"sphere {lens.get('sphere')}" if lens.get("sphere") is not None else "",
+            f"cylinder {lens.get('cylinder')}" if lens.get("cylinder") is not None else "",
+            f"axis {lens.get('axis')}" if lens.get("axis") is not None else "",
+            f"add {lens.get('add')}" if lens.get("add") is not None else "",
+            lens.get("brand") or "",
+            lens.get("color") or "",
+        ]
+        line = " / ".join(part for part in parts if part)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _request_group_action_summary(resource):
+    lines = []
+
+    def collect(actions, depth=0):
+        for action in actions or []:
+            parts = [
+                action.get("title") or "",
+                action.get("description") or "",
+                _codeable_text(action.get("code")),
+                action.get("priority") or "",
+                _display(action.get("resource")),
+            ]
+            line = " / ".join(part for part in parts if part)
+            if line:
+                lines.append(f"{'  ' * depth}{line}")
+            collect(action.get("action"), depth + 1)
+
+    collect(resource.get("action"))
+    return "\n".join(lines)
+
+
+def _guidance_data_requirement_summary(resource):
+    lines = []
+    for requirement in resource.get("dataRequirement") or []:
+        line = " / ".join(part for part in [requirement.get("type"), requirement.get("profile", [""])[0] if requirement.get("profile") else ""] if part)
+        if line:
+            lines.append(line)
     return "\n".join(lines)
 
 
