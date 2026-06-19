@@ -18,7 +18,9 @@ Status legend:
 - `CareTeam` -> `clinical.CareTeam`
 - `ClinicalImpression` -> `clinical.ClinicalImpression`
 - `Condition` -> `clinical.Condition`
+- `DetectedIssue` -> `clinical.DetectedIssue`
 - `Device` -> `clinical.Device`
+- `DiagnosticReport` -> `clinical.DiagnosticReport`
 - `DocumentReference` -> `documents.ClinicalDocument`
 - `Encounter` -> `clinical.Encounter`
 - `EpisodeOfCare` -> `clinical.EpisodeOfCare`
@@ -153,7 +155,7 @@ Status legend:
 | `Procedure` | First-class | Completed procedures/actions. |
 | `FamilyMemberHistory` | First-class | Family history with repeating condition details. |
 | `ClinicalImpression` | First-class | Clinician assessment/synthesis, findings, and investigations. |
-| `DetectedIssue` | Planned | Safety/quality issues such as interactions or duplicate therapy. |
+| `DetectedIssue` | First-class | Safety/quality issues such as interactions or duplicate therapy. |
 
 ### Diagnostics
 
@@ -161,7 +163,7 @@ Status legend:
 | --- | --- | --- |
 | `Observation` | First-class | Vitals/labs/results. |
 | `Media` | Planned | Clinical images/photos/media. |
-| `DiagnosticReport` | Planned | Highest-priority missing clinical resource. |
+| `DiagnosticReport` | First-class | Diagnostic reports with encounter, requests, specimens, observations, performers, interpreters, and presented forms. |
 | `Specimen` | First-class | Lab specimen details. |
 | `BodyStructure` | Planned | Anatomical/body-site detail. |
 | `ImagingStudy` | Planned | Imaging study/series/instance data. |

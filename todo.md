@@ -14,7 +14,7 @@
 [ ] add more FHIR resources
     [x] CarePlan - care plans with condition/care-team relationships
     [x] Procedure - high priority; patient-facing care history such as surgeries, imaging procedures, treatments, and completed actions
-    [ ] DiagnosticReport - high priority; groups labs/imaging reports and can point to observations, documents, and specimens
+    [x] DiagnosticReport - high priority; groups labs/imaging reports and can point to observations, documents, and specimens
     [x] ServiceRequest - medium-high priority; orders, referrals, and requested services tied to encounters/procedures
     [x] Specimen - medium priority; supporting data for labs and diagnostic reports
     [x] EpisodeOfCare - medium priority; groups visits/actions into a larger care episode
@@ -29,7 +29,7 @@
     [x] ClinicalImpression - clinician assessment/synthesis; link to findings, problems, investigations, and plans
     [x] FamilyMemberHistory - family history conditions and relationships
     [x] AdverseEvent - harmful events and contributing products/substances/procedures
-    [ ] DetectedIssue - clinical safety/quality issues such as drug interactions or duplicate therapy
+    [x] DetectedIssue - clinical safety/quality issues such as drug interactions or duplicate therapy
     [ ] BodyStructure - body site details used by Procedure, Observation, ImagingStudy, etc.
     [ ] MedicationAdministration - administered meds; distinct from medication orders/statements
     [ ] MedicationDispense - dispensed meds; pharmacy/supply event distinct from orders/statements
@@ -186,21 +186,21 @@
         [ ] FHIR source: Condition.evidence.detail
         [ ] Django shape: defer until DiagnosticReport and richer Observation linking exist; likely generic FHIR reference table
         [ ] Use case: supporting evidence for diagnoses/problems
-    [ ] Future DiagnosticReport.encounter -> Encounter
+    [x] DiagnosticReport.encounter -> Encounter
         [ ] FHIR source: DiagnosticReport.encounter
-        [ ] Django shape: DiagnosticReport.encounter nullable FK once DiagnosticReport is supported
+        [x] Django shape: DiagnosticReport.encounter nullable FK
         [ ] Use case: report belongs to a visit
-    [ ] Future DiagnosticReport.results -> Observation
+    [x] DiagnosticReport.results -> Observation
         [ ] FHIR source: DiagnosticReport.result
-        [ ] Django shape: M2M to Observation
+        [x] Django shape: M2M to Observation
         [ ] Use case: group atomic lab/imaging results into a report
-    [ ] Future DiagnosticReport.specimens -> Specimen
+    [x] DiagnosticReport.specimens -> Specimen
         [ ] FHIR source: DiagnosticReport.specimen
-        [ ] Django shape: M2M once Specimen is supported
+        [x] Django shape: M2M to Specimen
         [ ] Use case: connect reports to specimens
-    [ ] Future DiagnosticReport.media/documents -> ClinicalDocument
+    [x] DiagnosticReport.presentedForm -> ClinicalDocument
         [ ] FHIR source: DiagnosticReport.presentedForm and media
-        [ ] Django shape: M2M or attached file/document relationship
+        [x] Django shape: M2M to ClinicalDocument for stored presentedForm attachments; media/imaging references summarized until Media/ImagingStudy exist
         [ ] Use case: connect reports to PDFs/images/narrative attachments
     [ ] Future ServiceRequest.encounter -> Encounter
         [ ] FHIR source: ServiceRequest.encounter

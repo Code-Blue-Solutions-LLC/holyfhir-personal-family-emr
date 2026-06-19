@@ -22,7 +22,9 @@ from clinical.models import (
     ClinicalImpression,
     ClinicalImpressionFinding,
     Condition,
+    DetectedIssue,
     Device,
+    DiagnosticReport,
     Encounter,
     EpisodeOfCare,
     FamilyMemberHistory,
@@ -1087,6 +1089,200 @@ class FHIRImportTests(TestCase):
         self.assertEqual(adverse_event.subject_medical_history_immunizations.get(), Immunization.objects.get())
         self.assertEqual(adverse_event.subject_medical_history_procedures.get(), Procedure.objects.get())
 
+    def test_imports_diagnostic_report_and_detected_issue_relationships(self):
+        report_text = b64encode(b"diagnostic report").decode("ascii")
+        payload = {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "pat-1",
+                        "name": [{"family": "Rivera", "given": ["Maya"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": "org-1",
+                        "name": "Example Lab",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Practitioner",
+                        "id": "prac-1",
+                        "name": [{"family": "Nguyen", "given": ["Ari"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "PractitionerRole",
+                        "id": "role-1",
+                        "practitioner": {"reference": "Practitioner/prac-1"},
+                        "organization": {"reference": "Organization/org-1"},
+                        "code": [{"text": "Pathologist"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Encounter",
+                        "id": "enc-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "class": {"display": "Outpatient"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Condition",
+                        "id": "cond-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "code": {"text": "Anemia"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Specimen",
+                        "id": "spec-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Blood"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "id": "obs-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "specimen": {"reference": "Specimen/spec-1"},
+                        "code": {"text": "Hemoglobin"},
+                        "valueQuantity": {"value": 11.2, "unit": "g/dL"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "CarePlan",
+                        "id": "cp-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "active",
+                        "intent": "plan",
+                        "title": "Anemia workup",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "ServiceRequest",
+                        "id": "sr-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "completed",
+                        "intent": "order",
+                        "code": {"text": "CBC"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Device",
+                        "id": "device-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Decision support system"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "DiagnosticReport",
+                        "id": "dr-1",
+                        "status": "final",
+                        "category": [{"text": "Laboratory"}],
+                        "code": {"text": "CBC report"},
+                        "subject": {"reference": "Patient/pat-1"},
+                        "encounter": {"reference": "Encounter/enc-1"},
+                        "basedOn": [
+                            {"reference": "CarePlan/cp-1"},
+                            {"reference": "ServiceRequest/sr-1"},
+                        ],
+                        "effectiveDateTime": "2024-01-03T09:00:00Z",
+                        "issued": "2024-01-03T10:00:00Z",
+                        "performer": [
+                            {"reference": "Organization/org-1"},
+                            {"reference": "PractitionerRole/role-1"},
+                        ],
+                        "resultsInterpreter": [{"reference": "Practitioner/prac-1"}],
+                        "specimen": [{"reference": "Specimen/spec-1"}],
+                        "result": [{"reference": "Observation/obs-1"}],
+                        "conclusion": "Mild anemia.",
+                        "conclusionCode": [{"text": "Abnormal"}],
+                        "presentedForm": [
+                            {
+                                "contentType": "text/plain",
+                                "title": "CBC report text",
+                                "data": report_text,
+                            }
+                        ],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "DetectedIssue",
+                        "id": "issue-1",
+                        "status": "final",
+                        "code": {"text": "Duplicate therapy"},
+                        "severity": "moderate",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "identifiedDateTime": "2024-01-03T11:00:00Z",
+                        "author": {"reference": "Device/device-1"},
+                        "implicated": [
+                            {"reference": "ServiceRequest/sr-1"},
+                            {"reference": "DiagnosticReport/dr-1"},
+                            {"reference": "Condition/cond-1"},
+                        ],
+                        "evidence": [
+                            {
+                                "code": [{"text": "Low hemoglobin"}],
+                                "detail": [
+                                    {"reference": "Observation/obs-1"},
+                                    {"reference": "DiagnosticReport/dr-1"},
+                                ],
+                            }
+                        ],
+                        "detail": "Possible duplicate lab order.",
+                        "mitigation": [
+                            {
+                                "action": {"text": "Reviewed by clinician"},
+                                "date": "2024-01-03T11:15:00Z",
+                                "author": {"reference": "PractitionerRole/role-1"},
+                            }
+                        ],
+                    }
+                },
+            ],
+        }
+
+        with tempfile.TemporaryDirectory() as media_root:
+            with override_settings(MEDIA_ROOT=media_root):
+                result = import_fhir_json(payload)
+
+            self.assertEqual(result.errors, [])
+            diagnostic_report = DiagnosticReport.objects.get()
+            self.assertEqual(diagnostic_report.encounter, Encounter.objects.get())
+            self.assertEqual(diagnostic_report.care_plans.get(), CarePlan.objects.get())
+            self.assertEqual(diagnostic_report.service_requests.get(), ServiceRequest.objects.get())
+            self.assertEqual(diagnostic_report.specimens.get(), Specimen.objects.get())
+            self.assertEqual(diagnostic_report.observations.get(), Observation.objects.get())
+            self.assertEqual(diagnostic_report.performers_roles.get(), PractitionerRole.objects.get())
+            self.assertEqual(diagnostic_report.performers_organizations.get(), Organization.objects.get())
+            self.assertEqual(diagnostic_report.interpreter_practitioners.get(), Practitioner.objects.get())
+            self.assertEqual(diagnostic_report.presented_documents.count(), 1)
+            self.assertEqual(ClinicalDocument.objects.get().title, "CBC report text")
+
+            detected_issue = DetectedIssue.objects.get()
+            self.assertEqual(detected_issue.author_device, Device.objects.get())
+            self.assertEqual(detected_issue.implicated_service_requests.get(), ServiceRequest.objects.get())
+            self.assertEqual(detected_issue.implicated_diagnostic_reports.get(), diagnostic_report)
+            self.assertEqual(detected_issue.implicated_conditions.get(), Condition.objects.get())
+            self.assertEqual(detected_issue.evidence_observations.get(), Observation.objects.get())
+            self.assertEqual(detected_issue.evidence_diagnostic_reports.get(), diagnostic_report)
+            self.assertIn("Reviewed by clinician", detected_issue.mitigation_summary)
+
     def test_missing_patient_reference_is_snapshotted_as_invalid(self):
         result = import_fhir_json(
             {
@@ -1107,11 +1303,11 @@ class FHIRImportTests(TestCase):
     def test_unsupported_resource_is_preserved_as_valid_snapshot_only(self):
         result = import_fhir_json(
             {
-                "resourceType": "DiagnosticReport",
-                "id": "report-1",
-                "status": "final",
+                "resourceType": "Goal",
+                "id": "goal-1",
+                "lifecycleStatus": "active",
                 "subject": {"reference": "Patient/missing"},
-                "code": {"text": "Lab report"},
+                "description": {"text": "Walk daily"},
             }
         )
 
@@ -1123,7 +1319,7 @@ class FHIRImportTests(TestCase):
         self.assertTrue(snapshot.is_valid)
         self.assertEqual(snapshot.import_status, FHIRResourceSnapshot.IMPORT_STATUS_SNAPSHOT_ONLY)
         self.assertEqual(snapshot.validation_errors, [])
-        self.assertEqual(snapshot.resource_type, "DiagnosticReport")
+        self.assertEqual(snapshot.resource_type, "Goal")
 
     def test_loads_fhir_json_rejects_invalid_json(self):
         with self.assertRaises(ValueError):

@@ -10,7 +10,9 @@ from .models import (
     ClinicalImpression,
     ClinicalImpressionFinding,
     Condition,
+    DetectedIssue,
     Device,
+    DiagnosticReport,
     Encounter,
     EpisodeOfCare,
     FamilyMemberHistory,
@@ -76,6 +78,58 @@ class ObservationAdmin(admin.ModelAdmin):
     list_filter = ("patient", "category")
     ordering = ("-effective_datetime",)
     autocomplete_fields = ["patient", "specimen", "device"]
+
+
+@admin.register(DiagnosticReport)
+class DiagnosticReportAdmin(admin.ModelAdmin):
+    list_display = ("id", "patient", "code", "status", "category", "effective_datetime", "issued")
+    list_display_links = ("code",)
+    search_fields = ("code", "category", "conclusion", "conclusion_code", "notes")
+    list_filter = ("patient", "status", "category")
+    ordering = ("-effective_datetime", "-issued")
+    autocomplete_fields = ["patient", "encounter"]
+    filter_horizontal = (
+        "care_plans",
+        "service_requests",
+        "specimens",
+        "observations",
+        "performers_practitioners",
+        "performers_roles",
+        "performers_organizations",
+        "performers_care_teams",
+        "interpreter_practitioners",
+        "interpreter_roles",
+        "interpreter_organizations",
+        "interpreter_care_teams",
+        "presented_documents",
+    )
+
+
+@admin.register(DetectedIssue)
+class DetectedIssueAdmin(admin.ModelAdmin):
+    list_display = ("id", "issue_label", "patient", "severity", "status", "identified_datetime")
+    list_display_links = ("issue_label",)
+    search_fields = ("code", "detail", "evidence_summary", "mitigation_summary", "implicated_summary", "notes")
+    list_filter = ("patient", "status", "severity", "code")
+    ordering = ("-identified_datetime", "-updated_at")
+    autocomplete_fields = ["patient", "author_practitioner", "author_role", "author_device"]
+    filter_horizontal = (
+        "implicated_conditions",
+        "implicated_medications",
+        "implicated_immunizations",
+        "implicated_observations",
+        "implicated_service_requests",
+        "implicated_procedures",
+        "implicated_devices",
+        "implicated_diagnostic_reports",
+        "evidence_observations",
+        "evidence_conditions",
+        "evidence_diagnostic_reports",
+    )
+
+    @admin.display(description="Issue", ordering="code")
+    def issue_label(self, obj):
+        return obj.code or obj.detail or f"Detected Issue #{obj.pk}"
 
 
 @admin.register(Specimen)
@@ -205,8 +259,8 @@ class EpisodeOfCareAdmin(admin.ModelAdmin):
 
 @admin.register(AdverseEvent)
 class AdverseEventAdmin(admin.ModelAdmin):
-    list_display = ("id", "patient", "event", "actuality", "severity", "outcome", "event_date")
-    list_display_links = ("event",)
+    list_display = ("id", "event_label", "patient", "actuality", "severity", "outcome", "event_date")
+    list_display_links = ("event_label",)
     search_fields = ("event", "category", "seriousness", "severity", "outcome", "suspect_entity_summary")
     list_filter = ("patient", "actuality", "severity", "outcome", "category")
     ordering = ("-event_date", "-recorded_date")
@@ -232,6 +286,10 @@ class AdverseEventAdmin(admin.ModelAdmin):
         "subject_medical_history_immunizations",
         "subject_medical_history_procedures",
     )
+
+    @admin.display(description="Event", ordering="event")
+    def event_label(self, obj):
+        return obj.event or obj.category or f"Adverse Event #{obj.pk}"
 
 
 class FamilyMemberHistoryConditionInline(admin.StackedInline):
@@ -295,8 +353,8 @@ class ClinicalImpressionFindingInline(admin.StackedInline):
 @admin.register(ClinicalImpression)
 class ClinicalImpressionAdmin(admin.ModelAdmin):
     inlines = (ClinicalImpressionFindingInline,)
-    list_display = ("id", "patient", "description", "status", "date", "encounter")
-    list_display_links = ("description",)
+    list_display = ("id", "impression_label", "patient", "status", "date", "encounter")
+    list_display_links = ("impression_label",)
     search_fields = ("description", "summary", "prognosis", "notes")
     list_filter = ("patient", "status", "date")
     ordering = ("-date", "-effective_datetime")
@@ -307,6 +365,10 @@ class ClinicalImpressionAdmin(admin.ModelAdmin):
         "assessor_role",
     ]
     filter_horizontal = ("conditions", "observations", "problems", "investigations_observations")
+
+    @admin.display(description="Impression", ordering="description")
+    def impression_label(self, obj):
+        return obj.description or obj.summary or f"Clinical Impression #{obj.pk}"
 
 
 @admin.register(Practitioner)
@@ -324,13 +386,17 @@ class PractitionerAdmin(admin.ModelAdmin):
 
 @admin.register(PractitionerRole)
 class PractitionerRoleAdmin(admin.ModelAdmin):
-    list_display = ("id", "practitioner", "organization", "role", "specialty", "active")
-    list_display_links = ("role",)
+    list_display = ("id", "role_label", "practitioner", "organization", "specialty", "active")
+    list_display_links = ("role_label",)
     search_fields = ("role", "specialty", "practitioner__name", "organization__name")
     list_filter = ("active", "role", "specialty", "organization")
     ordering = ("practitioner__name", "organization__name", "role")
     autocomplete_fields = ["practitioner", "organization"]
     filter_horizontal = ("locations",)
+
+    @admin.display(description="Role", ordering="role")
+    def role_label(self, obj):
+        return obj.role or obj.specialty or str(obj.practitioner or obj.organization or f"Practitioner Role #{obj.pk}")
 
 
 @admin.register(Device)
