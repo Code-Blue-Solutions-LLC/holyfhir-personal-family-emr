@@ -259,6 +259,193 @@ class CarePlan(models.Model):
         return self.title
 
 
+class FamilyMemberHistory(models.Model):
+    """FHIR FamilyMemberHistory: significant health conditions in a person related to the patient."""
+
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name="family_member_histories",
+        help_text="FHIR patient: the patient whose family history this record describes.",
+    )
+    conditions = models.ManyToManyField(
+        Condition,
+        blank=True,
+        related_name="family_member_histories",
+        help_text="FHIR condition: patient Condition records that help represent or match the family history.",
+    )
+    status = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="FHIR status: partial, completed, entered-in-error, or health-unknown.",
+    )
+    relationship = models.CharField(max_length=255, help_text="FHIR relationship: how this relative is related to the patient.")
+    sex = models.CharField(max_length=30, blank=True, help_text="FHIR sex: recorded sex of the family member.")
+    born_date = models.DateField(null=True, blank=True, help_text="FHIR bornDate: actual or approximate birth date.")
+    born_text = models.CharField(max_length=255, blank=True, help_text="FHIR bornString/Period: textual birth details.")
+    age_text = models.CharField(max_length=255, blank=True, help_text="FHIR age[x]: age or age range at the time recorded.")
+    estimated_age = models.BooleanField(default=False, help_text="FHIR estimatedAge: whether the age is approximate.")
+    deceased = models.BooleanField(null=True, blank=True, help_text="FHIR deceasedBoolean: whether the relative is deceased.")
+    deceased_date = models.DateField(null=True, blank=True, help_text="FHIR deceasedDate: date of death when known.")
+    deceased_text = models.CharField(max_length=255, blank=True, help_text="FHIR deceased[x]: age, range, or text about death.")
+    reason = models.CharField(max_length=255, blank=True, help_text="FHIR reasonCode/reasonReference: why this history was recorded.")
+    notes = models.TextField(blank=True, help_text="FHIR note: general notes about the related person.")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Family Member History"
+        verbose_name_plural = "Family Member Histories"
+
+    def __str__(self):
+        return self.relationship
+
+
+class FamilyMemberHistoryCondition(models.Model):
+    """FHIR FamilyMemberHistory.condition: a condition the related person had."""
+
+    family_member_history = models.ForeignKey(
+        FamilyMemberHistory,
+        on_delete=models.CASCADE,
+        related_name="condition_links",
+        help_text="The family member history record this condition belongs to.",
+    )
+    condition = models.ForeignKey(
+        Condition,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="family_history_condition_links",
+        help_text="Optional matching local Condition record.",
+    )
+    condition_text = models.CharField(max_length=255, help_text="FHIR code: condition suffered by the family member.")
+    outcome = models.CharField(max_length=255, blank=True, help_text="FHIR outcome: result such as death or disability.")
+    contributed_to_death = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="FHIR contributedToDeath: whether this condition contributed to death.",
+    )
+    onset_text = models.CharField(max_length=255, blank=True, help_text="FHIR onset[x]: when the condition first appeared.")
+    notes = models.TextField(blank=True, help_text="FHIR note: extra notes about this specific family condition.")
+
+    def __str__(self):
+        return self.condition_text
+
+
+class ClinicalImpression(models.Model):
+    """FHIR ClinicalImpression: a clinician's assessment and synthesis of patient findings."""
+
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name="clinical_impressions",
+        help_text="FHIR subject: patient who was assessed.",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_impressions",
+        help_text="FHIR encounter: visit or encounter where the assessment occurred.",
+    )
+    assessor_practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_impressions",
+        help_text="FHIR assessor: clinician responsible for the assessment.",
+    )
+    assessor_role = models.ForeignKey(
+        "PractitionerRole",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_impressions",
+        help_text="FHIR assessor: practitioner role used when the assessor is represented by role.",
+    )
+    conditions = models.ManyToManyField(
+        Condition,
+        blank=True,
+        related_name="clinical_impressions",
+        help_text="FHIR finding/problem references resolved to local Condition records.",
+    )
+    observations = models.ManyToManyField(
+        Observation,
+        blank=True,
+        related_name="clinical_impressions",
+        help_text="FHIR finding/investigation references resolved to local Observation records.",
+    )
+    problems = models.ManyToManyField(
+        Condition,
+        blank=True,
+        related_name="clinical_impression_problem_refs",
+        help_text="FHIR problem: conditions or problems considered during the assessment.",
+    )
+    investigations_observations = models.ManyToManyField(
+        Observation,
+        blank=True,
+        related_name="clinical_impression_investigations",
+        help_text="FHIR investigation.item: observations reviewed as part of the assessment.",
+    )
+    status = models.CharField(max_length=30, blank=True, help_text="FHIR status: state of the assessment.")
+    description = models.TextField(blank=True, help_text="FHIR description: why the assessment was performed.")
+    effective_datetime = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="FHIR effective[x]: time or period covered by the assessment.",
+    )
+    date = models.DateTimeField(null=True, blank=True, help_text="FHIR date: when the assessment was made.")
+    protocol = models.TextField(blank=True, help_text="FHIR protocol: clinical protocol or guideline followed.")
+    summary = models.TextField(blank=True, help_text="FHIR summary: narrative summary of the assessment.")
+    prognosis = models.TextField(blank=True, help_text="FHIR prognosisCodeableConcept/prognosisReference: expected outcome.")
+    notes = models.TextField(blank=True, help_text="FHIR note: clinical notes about the impression.")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Clinical Impression"
+        verbose_name_plural = "Clinical Impressions"
+
+    def __str__(self):
+        return self.description or self.summary or f"Clinical Impression #{self.pk}"
+
+
+class ClinicalImpressionFinding(models.Model):
+    """FHIR ClinicalImpression.finding: a relevant condition, observation, or coded finding."""
+
+    clinical_impression = models.ForeignKey(
+        ClinicalImpression,
+        on_delete=models.CASCADE,
+        related_name="finding_links",
+        help_text="The clinical impression this finding belongs to.",
+    )
+    condition = models.ForeignKey(
+        Condition,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_impression_findings",
+        help_text="FHIR finding.itemReference resolved to a local Condition.",
+    )
+    observation = models.ForeignKey(
+        Observation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="clinical_impression_findings",
+        help_text="FHIR finding.itemReference resolved to a local Observation.",
+    )
+    finding_text = models.CharField(max_length=255, blank=True, help_text="FHIR finding.itemCodeableConcept or display text.")
+    basis = models.TextField(blank=True, help_text="FHIR basis: reason this finding is relevant.")
+
+    def __str__(self):
+        return self.finding_text or str(self.condition or self.observation or f"Finding #{self.pk}")
+
+
 class PractitionerRole(models.Model):
     practitioner = models.ForeignKey(
         "Practitioner",
@@ -422,6 +609,149 @@ class EpisodeOfCare(models.Model):
 
     def __str__(self):
         return self.episode_type or f"Episode of Care #{self.pk}"
+
+
+class AdverseEvent(models.Model):
+    """FHIR AdverseEvent: an actual or potential harmful event involving a patient."""
+
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name="adverse_events",
+        help_text="FHIR subject: patient affected by the adverse event.",
+    )
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adverse_events",
+        help_text="FHIR encounter: visit or encounter associated with the event.",
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adverse_events",
+        help_text="FHIR location: where the event occurred.",
+    )
+    recorder_practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_adverse_events",
+        help_text="FHIR recorder: person who recorded the event.",
+    )
+    recorder_role = models.ForeignKey(
+        PractitionerRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_adverse_events",
+        help_text="FHIR recorder: practitioner role used when the recorder is represented by role.",
+    )
+    resulting_conditions = models.ManyToManyField(
+        Condition,
+        blank=True,
+        related_name="adverse_events",
+        help_text="FHIR resultingCondition: conditions that resulted from the event.",
+    )
+    contributor_practitioners = models.ManyToManyField(
+        "Practitioner",
+        blank=True,
+        related_name="adverse_event_contributions",
+        help_text="FHIR contributor: practitioners involved in the event.",
+    )
+    contributor_roles = models.ManyToManyField(
+        PractitionerRole,
+        blank=True,
+        related_name="adverse_event_contributions",
+        help_text="FHIR contributor: practitioner roles involved in the event.",
+    )
+    contributor_devices = models.ManyToManyField(
+        Device,
+        blank=True,
+        related_name="adverse_event_contributions",
+        help_text="FHIR contributor: devices involved in the event.",
+    )
+    suspect_immunizations = models.ManyToManyField(
+        Immunization,
+        blank=True,
+        related_name="suspected_adverse_events",
+        help_text="FHIR suspectEntity.instance: immunizations suspected to have contributed.",
+    )
+    suspect_procedures = models.ManyToManyField(
+        "Procedure",
+        blank=True,
+        related_name="suspected_adverse_events",
+        help_text="FHIR suspectEntity.instance: procedures suspected to have contributed.",
+    )
+    suspect_medications = models.ManyToManyField(
+        Medication,
+        blank=True,
+        related_name="suspected_adverse_events",
+        help_text="FHIR suspectEntity.instance: medications suspected to have contributed.",
+    )
+    suspect_devices = models.ManyToManyField(
+        Device,
+        blank=True,
+        related_name="suspected_adverse_events",
+        help_text="FHIR suspectEntity.instance: devices suspected to have contributed.",
+    )
+    reference_documents = models.ManyToManyField(
+        "documents.ClinicalDocument",
+        blank=True,
+        related_name="adverse_events",
+        help_text="FHIR referenceDocument: documents relevant to the event.",
+    )
+    subject_medical_history_conditions = models.ManyToManyField(
+        Condition,
+        blank=True,
+        related_name="adverse_event_medical_history_refs",
+        help_text="FHIR subjectMedicalHistory: prior conditions relevant to the event.",
+    )
+    subject_medical_history_observations = models.ManyToManyField(
+        Observation,
+        blank=True,
+        related_name="adverse_event_medical_history_refs",
+        help_text="FHIR subjectMedicalHistory: prior observations relevant to the event.",
+    )
+    subject_medical_history_immunizations = models.ManyToManyField(
+        Immunization,
+        blank=True,
+        related_name="adverse_event_medical_history_refs",
+        help_text="FHIR subjectMedicalHistory: prior immunizations relevant to the event.",
+    )
+    subject_medical_history_procedures = models.ManyToManyField(
+        "Procedure",
+        blank=True,
+        related_name="adverse_event_medical_history_refs",
+        help_text="FHIR subjectMedicalHistory: prior procedures relevant to the event.",
+    )
+    actuality = models.CharField(max_length=30, blank=True, help_text="FHIR actuality: actual or potential adverse event.")
+    category = models.CharField(max_length=255, blank=True, help_text="FHIR category: product-problem, product-quality, etc.")
+    event = models.CharField(max_length=255, blank=True, help_text="FHIR event: type of adverse event.")
+    event_date = models.DateTimeField(null=True, blank=True, help_text="FHIR date: when the adverse event occurred.")
+    detected_date = models.DateTimeField(null=True, blank=True, help_text="FHIR detected: when the event was detected.")
+    recorded_date = models.DateTimeField(null=True, blank=True, help_text="FHIR recordedDate: when the event was recorded.")
+    seriousness = models.CharField(max_length=255, blank=True, help_text="FHIR seriousness: serious, non-serious, etc.")
+    severity = models.CharField(max_length=255, blank=True, help_text="FHIR severity: mild, moderate, severe, etc.")
+    outcome = models.CharField(max_length=255, blank=True, help_text="FHIR outcome: result or final state of the event.")
+    suspect_entity_summary = models.TextField(blank=True, help_text="FHIR suspectEntity: imported summary for unsupported suspects.")
+    causality_summary = models.TextField(blank=True, help_text="FHIR causality: assessment of causality for suspect entities.")
+    notes = models.TextField(blank=True, help_text="FHIR note: additional event notes.")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Adverse Event"
+        verbose_name_plural = "Adverse Events"
+
+    def __str__(self):
+        return self.event or self.category or f"Adverse Event #{self.pk}"
 
 
 class CareTeamParticipant(models.Model):

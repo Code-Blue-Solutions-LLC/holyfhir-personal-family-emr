@@ -48,6 +48,9 @@ class SettingsBackupPageTests(TestCase):
         expected_resources = [
             ("Conditions", "admin:clinical_condition_changelist"),
             ("Allergies", "admin:clinical_allergy_changelist"),
+            ("Adverse Events", "admin:clinical_adverseevent_changelist"),
+            ("Family History", "admin:clinical_familymemberhistory_changelist"),
+            ("Clinical Impressions", "admin:clinical_clinicalimpression_changelist"),
             ("Medications", "admin:clinical_medication_changelist"),
             ("Immunizations", "admin:clinical_immunization_changelist"),
             ("Vitals &amp; Labs", "admin:clinical_observation_changelist"),

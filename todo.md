@@ -26,9 +26,9 @@
     [ ] Media - clinical photos, imaging key images, waveforms, or other captured media; link to Patient/Encounter/Procedure
     [ ] Goal - patient/care-team goals; link to CarePlan, Conditions, and lifecycle status
     [ ] RiskAssessment - risk predictions and probabilities; link to Conditions/Observations/Encounter
-    [ ] ClinicalImpression - clinician assessment/synthesis; link to findings, problems, investigations, and plans
-    [ ] FamilyMemberHistory - family history conditions and relationships
-    [ ] AdverseEvent - harmful events and contributing products/substances/procedures
+    [x] ClinicalImpression - clinician assessment/synthesis; link to findings, problems, investigations, and plans
+    [x] FamilyMemberHistory - family history conditions and relationships
+    [x] AdverseEvent - harmful events and contributing products/substances/procedures
     [ ] DetectedIssue - clinical safety/quality issues such as drug interactions or duplicate therapy
     [ ] BodyStructure - body site details used by Procedure, Observation, ImagingStudy, etc.
     [ ] MedicationAdministration - administered meds; distinct from medication orders/statements

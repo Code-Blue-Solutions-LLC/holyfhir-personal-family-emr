@@ -162,6 +162,22 @@
     color: #fff !important;
 }
 
+.inline-group .tabular .inline-deletelink,
+.djn-group .tabular .inline-deletelink {
+    background: transparent !important;
+    border: 0 !important;
+    color: #dc2626 !important;
+    display: inline !important;
+    font-weight: 600 !important;
+    padding: 0 !important;
+    position: static !important;
+}
+
+.inline-group .tabular .inline-deletelink::before,
+.djn-group .tabular .inline-deletelink::before {
+    content: "" !important;
+}
+
 @media (max-width: 767px) {
     .inline-group .inline-deletelink,
     .djn-group .inline-deletelink {

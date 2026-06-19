@@ -13,13 +13,16 @@ Status legend:
 ## Current First-Class Support
 
 - `AllergyIntolerance` -> `clinical.Allergy`
+- `AdverseEvent` -> `clinical.AdverseEvent`
 - `CarePlan` -> `clinical.CarePlan`
 - `CareTeam` -> `clinical.CareTeam`
+- `ClinicalImpression` -> `clinical.ClinicalImpression`
 - `Condition` -> `clinical.Condition`
 - `Device` -> `clinical.Device`
 - `DocumentReference` -> `documents.ClinicalDocument`
 - `Encounter` -> `clinical.Encounter`
 - `EpisodeOfCare` -> `clinical.EpisodeOfCare`
+- `FamilyMemberHistory` -> `clinical.FamilyMemberHistory`
 - `Immunization` -> `clinical.Immunization`
 - `Location` -> `clinical.Location`
 - `MedicationRequest` -> `clinical.Medication`
@@ -145,11 +148,11 @@ Status legend:
 | Resource | Status | Notes |
 | --- | --- | --- |
 | `AllergyIntolerance` | First-class | Maps to `Allergy`; orphan patient strategy still needed. |
-| `AdverseEvent` | Planned | Harmful events and contributors. |
+| `AdverseEvent` | First-class | Harmful events and contributors. |
 | `Condition` | First-class | Problems/diagnoses. |
 | `Procedure` | First-class | Completed procedures/actions. |
-| `FamilyMemberHistory` | Planned | Family history. |
-| `ClinicalImpression` | Planned | Clinician assessment/synthesis. |
+| `FamilyMemberHistory` | First-class | Family history with repeating condition details. |
+| `ClinicalImpression` | First-class | Clinician assessment/synthesis, findings, and investigations. |
 | `DetectedIssue` | Planned | Safety/quality issues such as interactions or duplicate therapy. |
 
 ### Diagnostics

@@ -5,13 +5,16 @@ from django.shortcuts import render
 from django.urls import reverse
 
 from clinical.models import (
+    AdverseEvent,
     Allergy,
     CarePlan,
     CareTeam,
+    ClinicalImpression,
     Condition,
     Device,
     Encounter,
     EpisodeOfCare,
+    FamilyMemberHistory,
     Immunization,
     Location,
     Medication,
@@ -205,6 +208,30 @@ def clinical_resources_directory(request):
                     "url": reverse("admin:clinical_allergy_changelist"),
                     "icon": "fas fa-exclamation-triangle",
                     "count": Allergy.objects.count(),
+                    "count_label": "record",
+                },
+                {
+                    "title": "Adverse Events",
+                    "description": "Actual or potential harm events, contributors, outcomes, and suspect entities.",
+                    "url": reverse("admin:clinical_adverseevent_changelist"),
+                    "icon": "fas fa-exclamation-circle",
+                    "count": AdverseEvent.objects.count(),
+                    "count_label": "record",
+                },
+                {
+                    "title": "Family History",
+                    "description": "Family member relationships, conditions, outcomes, and notes.",
+                    "url": reverse("admin:clinical_familymemberhistory_changelist"),
+                    "icon": "fas fa-people-arrows",
+                    "count": FamilyMemberHistory.objects.count(),
+                    "count_label": "record",
+                },
+                {
+                    "title": "Clinical Impressions",
+                    "description": "Clinical assessments, summaries, findings, and supporting investigations.",
+                    "url": reverse("admin:clinical_clinicalimpression_changelist"),
+                    "icon": "fas fa-notes-medical",
+                    "count": ClinicalImpression.objects.count(),
                     "count_label": "record",
                 },
                 {

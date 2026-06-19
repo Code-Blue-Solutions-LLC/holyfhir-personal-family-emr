@@ -10,14 +10,19 @@ from django.db import transaction
 from django.utils.dateparse import parse_date, parse_datetime
 
 from clinical.models import (
+    AdverseEvent,
     Allergy,
     CarePlan,
     CareTeam,
     CareTeamParticipant,
+    ClinicalImpression,
+    ClinicalImpressionFinding,
     Condition,
     Device,
     Encounter,
     EpisodeOfCare,
+    FamilyMemberHistory,
+    FamilyMemberHistoryCondition,
     Immunization,
     Location,
     Medication,
@@ -38,8 +43,11 @@ from .models import FHIRLink, FHIRResourceSnapshot
 
 SUPPORTED_RESOURCE_TYPES = {
     "Patient",
+    "AdverseEvent",
     "Condition",
     "AllergyIntolerance",
+    "ClinicalImpression",
+    "FamilyMemberHistory",
     "MedicationStatement",
     "MedicationRequest",
     "Immunization",
@@ -151,7 +159,10 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
 
             importer = {
                 "Condition": _import_condition,
+                "AdverseEvent": _import_adverse_event,
                 "AllergyIntolerance": _import_allergy,
+                "ClinicalImpression": _import_clinical_impression,
+                "FamilyMemberHistory": _import_family_member_history,
                 "MedicationStatement": _import_medication_statement,
                 "MedicationRequest": _import_medication_request,
                 "Immunization": _import_immunization,
@@ -177,7 +188,13 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
 
         for resource in resources:
             resource_type = resource.get("resourceType")
-            if resource_type == "Observation":
+            if resource_type == "AdverseEvent":
+                _sync_adverse_event_relationships(resource)
+            elif resource_type == "ClinicalImpression":
+                _sync_clinical_impression_relationships(resource)
+            elif resource_type == "FamilyMemberHistory":
+                _sync_family_member_history_relationships(resource)
+            elif resource_type == "Observation":
                 _sync_observation_relationships(resource)
             elif resource_type == "CarePlan":
                 _sync_care_plan_relationships(resource)
@@ -315,6 +332,31 @@ def _import_condition(resource, patient):
     return obj, created
 
 
+def _import_adverse_event(resource, patient):
+    obj = _object_for_resource(resource, "clinical.AdverseEvent") or AdverseEvent(patient=patient)
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.location = _reference_as(resource.get("location"), Location)
+    obj.recorder_practitioner = _reference_as(resource.get("recorder"), Practitioner)
+    obj.recorder_role = _reference_as(resource.get("recorder"), PractitionerRole)
+    obj.actuality = resource.get("actuality") or ""
+    obj.category = _codeable_text(_first(resource.get("category"))) or ""
+    obj.event = _codeable_text(resource.get("event")) or "Adverse event"
+    obj.event_date = _datetime(resource.get("date"))
+    obj.detected_date = _datetime(resource.get("detected"))
+    obj.recorded_date = _datetime(resource.get("recordedDate"))
+    obj.seriousness = _codeable_text(resource.get("seriousness")) or ""
+    obj.severity = _codeable_text(resource.get("severity")) or ""
+    obj.outcome = _codeable_text(resource.get("outcome")) or ""
+    obj.suspect_entity_summary = _adverse_event_suspect_summary(resource)
+    obj.causality_summary = _adverse_event_causality_summary(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_adverse_event_relationships(resource, obj)
+    return obj, created
+
+
 def _import_allergy(resource, patient):
     obj = _object_for_resource(resource, "clinical.Allergy") or Allergy(patient=patient)
     reaction = _first(resource.get("reaction")) or {}
@@ -329,6 +371,31 @@ def _import_allergy(resource, patient):
     obj.notes = _notes(resource)
     created = obj.pk is None
     obj.save()
+    return obj, created
+
+
+def _import_family_member_history(resource, patient):
+    obj = _object_for_resource(resource, "clinical.FamilyMemberHistory") or FamilyMemberHistory(patient=patient)
+    obj.patient = patient
+    obj.status = resource.get("status") or ""
+    obj.relationship = _codeable_text(resource.get("relationship")) or "Family member"
+    obj.sex = _codeable_text(resource.get("sex")) or ""
+    obj.born_date = _date(resource.get("bornDate"))
+    obj.born_text = resource.get("bornString") or _age_text(resource.get("bornAge")) or _range_text(resource.get("bornPeriod"))
+    obj.age_text = resource.get("ageString") or _age_text(resource.get("ageAge")) or _range_text(resource.get("ageRange"))
+    obj.estimated_age = bool(resource.get("estimatedAge", False))
+    obj.deceased = resource.get("deceasedBoolean") if "deceasedBoolean" in resource else None
+    obj.deceased_date = _date(resource.get("deceasedDate"))
+    obj.deceased_text = (
+        resource.get("deceasedString")
+        or _age_text(resource.get("deceasedAge"))
+        or _range_text(resource.get("deceasedRange"))
+    )
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_family_member_history_relationships(resource, obj)
     return obj, created
 
 
@@ -454,6 +521,29 @@ def _import_care_plan(resource, patient):
     created = obj.pk is None
     obj.save()
     _sync_care_plan_relationships(resource, obj)
+    return obj, created
+
+
+def _import_clinical_impression(resource, patient):
+    obj = _object_for_resource(resource, "clinical.ClinicalImpression") or ClinicalImpression(patient=patient)
+    effective_period = resource.get("effectivePeriod") or {}
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.assessor_practitioner = _reference_as(resource.get("assessor"), Practitioner)
+    obj.assessor_role = _reference_as(resource.get("assessor"), PractitionerRole)
+    obj.status = resource.get("status") or ""
+    obj.description = resource.get("description") or ""
+    obj.effective_datetime = _datetime(resource.get("effectiveDateTime") or effective_period.get("start"))
+    obj.date = _datetime(resource.get("date"))
+    obj.protocol = "\n".join(resource.get("protocol") or [])
+    obj.summary = resource.get("summary") or ""
+    obj.prognosis = "\n".join(
+        value for value in [_codeable_text(item) for item in resource.get("prognosisCodeableConcept") or []] if value
+    )
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_clinical_impression_relationships(resource, obj)
     return obj, created
 
 
@@ -683,7 +773,12 @@ def _object_for_resource(resource, django_model):
     for model in (
         PatientProfile,
         Condition,
+        AdverseEvent,
         Allergy,
+        ClinicalImpression,
+        ClinicalImpressionFinding,
+        FamilyMemberHistory,
+        FamilyMemberHistoryCondition,
         Medication,
         Immunization,
         Observation,
@@ -720,6 +815,14 @@ def _object_for_reference(reference):
         "Encounter": "clinical.Encounter",
         "EpisodeOfCare": "clinical.EpisodeOfCare",
         "Condition": "clinical.Condition",
+        "AdverseEvent": "clinical.AdverseEvent",
+        "AllergyIntolerance": "clinical.Allergy",
+        "ClinicalImpression": "clinical.ClinicalImpression",
+        "FamilyMemberHistory": "clinical.FamilyMemberHistory",
+        "Immunization": "clinical.Immunization",
+        "MedicationRequest": "clinical.Medication",
+        "MedicationStatement": "clinical.Medication",
+        "Observation": "clinical.Observation",
         "CareTeam": "clinical.CareTeam",
         "CarePlan": "clinical.CarePlan",
         "Device": "clinical.Device",
@@ -727,6 +830,7 @@ def _object_for_reference(reference):
         "ServiceRequest": "clinical.ServiceRequest",
         "Specimen": "clinical.Specimen",
         "DocumentReference": "documents.ClinicalDocument",
+        "Patient": "patients.PatientProfile",
     }
     django_model = model_by_resource_type.get(resource_type)
     if not django_model:
@@ -905,6 +1009,12 @@ def _notes(resource):
     return "\n".join(notes)
 
 
+def _condition_by_name(name, patient):
+    if not name or not patient:
+        return None
+    return Condition.objects.filter(patient=patient, name__iexact=name).first()
+
+
 def _medication_name(resource):
     return (
         _codeable_text(resource.get("medicationCodeableConcept"))
@@ -1006,6 +1116,216 @@ def _file_extension_for_mime_type(mime_type):
         "application/xml": ".xml",
         "text/xml": ".xml",
     }.get(mime_type, ".bin")
+
+
+def _age_text(value):
+    if not isinstance(value, dict):
+        return ""
+    amount = value.get("value")
+    unit = value.get("unit") or value.get("code") or ""
+    return " ".join(str(part) for part in [amount, unit] if part)
+
+
+def _range_text(value):
+    if not isinstance(value, dict):
+        return ""
+    start = value.get("start")
+    end = value.get("end")
+    if start or end:
+        return " - ".join(part for part in [start, end] if part)
+    low = _age_text(value.get("low"))
+    high = _age_text(value.get("high"))
+    return " - ".join(part for part in [low, high] if part)
+
+
+def _adverse_event_suspect_summary(resource):
+    lines = []
+    for suspect in resource.get("suspectEntity") or []:
+        instance = _display(suspect.get("instance"))
+        causality_lines = []
+        for causality in suspect.get("causality") or []:
+            parts = [
+                _codeable_text(causality.get("assessment")),
+                causality.get("productRelatedness") or "",
+                _codeable_text(causality.get("method")),
+            ]
+            line = " / ".join(part for part in parts if part)
+            if line:
+                causality_lines.append(line)
+        if instance:
+            lines.append(instance)
+        lines.extend(f"  {line}" for line in causality_lines)
+    return "\n".join(lines)
+
+
+def _adverse_event_causality_summary(resource):
+    lines = []
+    for suspect in resource.get("suspectEntity") or []:
+        for causality in suspect.get("causality") or []:
+            parts = [
+                _display(causality.get("author")),
+                _codeable_text(causality.get("assessment")),
+                causality.get("productRelatedness") or "",
+                _codeable_text(causality.get("method")),
+            ]
+            line = " / ".join(part for part in parts if part)
+            if line:
+                lines.append(line)
+    return "\n".join(lines)
+
+
+def _sync_adverse_event_relationships(resource, adverse_event=None):
+    adverse_event = adverse_event or _object_for_resource(resource, "clinical.AdverseEvent")
+    if not adverse_event:
+        return
+
+    changed = []
+    for field, value in [
+        ("encounter", _reference_as(resource.get("encounter"), Encounter)),
+        ("location", _reference_as(resource.get("location"), Location)),
+        ("recorder_practitioner", _reference_as(resource.get("recorder"), Practitioner)),
+        ("recorder_role", _reference_as(resource.get("recorder"), PractitionerRole)),
+    ]:
+        if value and getattr(adverse_event, f"{field}_id") != value.id:
+            setattr(adverse_event, field, value)
+            changed.append(field)
+    if changed:
+        adverse_event.save(update_fields=changed)
+
+    adverse_event.resulting_conditions.set(
+        [obj for obj in (_reference_as(reference, Condition) for reference in resource.get("resultingCondition") or []) if obj]
+    )
+    adverse_event.contributor_practitioners.set(
+        [obj for obj in (_reference_as(reference, Practitioner) for reference in resource.get("contributor") or []) if obj]
+    )
+    adverse_event.contributor_roles.set(
+        [obj for obj in (_reference_as(reference, PractitionerRole) for reference in resource.get("contributor") or []) if obj]
+    )
+    adverse_event.contributor_devices.set(
+        [obj for obj in (_reference_as(reference, Device) for reference in resource.get("contributor") or []) if obj]
+    )
+
+    suspect_references = [(suspect.get("instance") or {}) for suspect in resource.get("suspectEntity") or []]
+    adverse_event.suspect_immunizations.set(
+        [obj for obj in (_reference_as(reference, Immunization) for reference in suspect_references) if obj]
+    )
+    adverse_event.suspect_procedures.set(
+        [obj for obj in (_reference_as(reference, Procedure) for reference in suspect_references) if obj]
+    )
+    adverse_event.suspect_medications.set(
+        [obj for obj in (_reference_as(reference, Medication) for reference in suspect_references) if obj]
+    )
+    adverse_event.suspect_devices.set(
+        [obj for obj in (_reference_as(reference, Device) for reference in suspect_references) if obj]
+    )
+
+    adverse_event.reference_documents.set(
+        [
+            obj
+            for obj in (_reference_as(reference, ClinicalDocument) for reference in resource.get("referenceDocument") or [])
+            if obj
+        ]
+    )
+
+    history_refs = resource.get("subjectMedicalHistory") or []
+    adverse_event.subject_medical_history_conditions.set(
+        [obj for obj in (_reference_as(reference, Condition) for reference in history_refs) if obj]
+    )
+    adverse_event.subject_medical_history_observations.set(
+        [obj for obj in (_reference_as(reference, Observation) for reference in history_refs) if obj]
+    )
+    adverse_event.subject_medical_history_immunizations.set(
+        [obj for obj in (_reference_as(reference, Immunization) for reference in history_refs) if obj]
+    )
+    adverse_event.subject_medical_history_procedures.set(
+        [obj for obj in (_reference_as(reference, Procedure) for reference in history_refs) if obj]
+    )
+
+
+def _sync_family_member_history_relationships(resource, family_member_history=None):
+    family_member_history = family_member_history or _object_for_resource(
+        resource,
+        "clinical.FamilyMemberHistory",
+    )
+    if not family_member_history:
+        return
+
+    conditions = []
+    for reference in resource.get("reasonReference") or []:
+        condition = _reference_as(reference, Condition)
+        if condition:
+            conditions.append(condition)
+    family_member_history.conditions.set(conditions)
+
+    family_member_history.condition_links.all().delete()
+    for condition in resource.get("condition") or []:
+        condition_link = FamilyMemberHistoryCondition(
+            family_member_history=family_member_history,
+            condition_text=_codeable_text(condition.get("code")) or "Family history condition",
+            outcome=_codeable_text(condition.get("outcome")) or "",
+            contributed_to_death=condition.get("contributedToDeath") if "contributedToDeath" in condition else None,
+            onset_text=(
+                condition.get("onsetString")
+                or _age_text(condition.get("onsetAge"))
+                or _range_text(condition.get("onsetRange"))
+                or _range_text(condition.get("onsetPeriod"))
+            ),
+            notes=_notes(condition),
+        )
+        matched_condition = _condition_by_name(condition_link.condition_text, family_member_history.patient)
+        if matched_condition:
+            condition_link.condition = matched_condition
+        condition_link.save()
+
+
+def _sync_clinical_impression_relationships(resource, clinical_impression=None):
+    clinical_impression = clinical_impression or _object_for_resource(resource, "clinical.ClinicalImpression")
+    if not clinical_impression:
+        return
+
+    changed = []
+    for field, value in [
+        ("encounter", _reference_as(resource.get("encounter"), Encounter)),
+        ("assessor_practitioner", _reference_as(resource.get("assessor"), Practitioner)),
+        ("assessor_role", _reference_as(resource.get("assessor"), PractitionerRole)),
+    ]:
+        if value and getattr(clinical_impression, f"{field}_id") != value.id:
+            setattr(clinical_impression, field, value)
+            changed.append(field)
+    if changed:
+        clinical_impression.save(update_fields=changed)
+
+    clinical_impression.problems.set(
+        [obj for obj in (_reference_as(reference, Condition) for reference in resource.get("problem") or []) if obj]
+    )
+
+    investigation_refs = []
+    for investigation in resource.get("investigation") or []:
+        investigation_refs.extend(investigation.get("item") or [])
+    clinical_impression.investigations_observations.set(
+        [obj for obj in (_reference_as(reference, Observation) for reference in investigation_refs) if obj]
+    )
+
+    condition_refs = []
+    observation_refs = []
+    clinical_impression.finding_links.all().delete()
+    for finding in resource.get("finding") or []:
+        condition = _reference_as(finding.get("itemReference"), Condition)
+        observation = _reference_as(finding.get("itemReference"), Observation)
+        finding_link = ClinicalImpressionFinding(
+            clinical_impression=clinical_impression,
+            condition=condition,
+            observation=observation,
+            finding_text=_codeable_text(finding.get("itemCodeableConcept")) or _display(finding.get("itemReference")),
+            basis=finding.get("basis") or "",
+        )
+        finding_link.save()
+        if condition:
+            condition_refs.append(condition)
+        if observation:
+            observation_refs.append(observation)
+    clinical_impression.conditions.set(condition_refs)
+    clinical_impression.observations.set(observation_refs)
 
 
 def _sync_document_reference_relationships(resource, document=None):

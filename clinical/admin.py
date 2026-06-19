@@ -1,13 +1,20 @@
+from django import forms
 from django.contrib import admin
+from django.db import models
 from .models import (
+    AdverseEvent,
     Allergy,
     CarePlan,
     CareTeam,
     CareTeamParticipant,
+    ClinicalImpression,
+    ClinicalImpressionFinding,
     Condition,
     Device,
     Encounter,
     EpisodeOfCare,
+    FamilyMemberHistory,
+    FamilyMemberHistoryCondition,
     Immunization,
     Location,
     Medication,
@@ -194,6 +201,112 @@ class EpisodeOfCareAdmin(admin.ModelAdmin):
         "care_manager_role",
     ]
     filter_horizontal = ("referral_requests", "care_teams")
+
+
+@admin.register(AdverseEvent)
+class AdverseEventAdmin(admin.ModelAdmin):
+    list_display = ("id", "patient", "event", "actuality", "severity", "outcome", "event_date")
+    list_display_links = ("event",)
+    search_fields = ("event", "category", "seriousness", "severity", "outcome", "suspect_entity_summary")
+    list_filter = ("patient", "actuality", "severity", "outcome", "category")
+    ordering = ("-event_date", "-recorded_date")
+    autocomplete_fields = [
+        "patient",
+        "encounter",
+        "location",
+        "recorder_practitioner",
+        "recorder_role",
+    ]
+    filter_horizontal = (
+        "resulting_conditions",
+        "contributor_practitioners",
+        "contributor_roles",
+        "contributor_devices",
+        "suspect_immunizations",
+        "suspect_procedures",
+        "suspect_medications",
+        "suspect_devices",
+        "reference_documents",
+        "subject_medical_history_conditions",
+        "subject_medical_history_observations",
+        "subject_medical_history_immunizations",
+        "subject_medical_history_procedures",
+    )
+
+
+class FamilyMemberHistoryConditionInline(admin.StackedInline):
+    model = FamilyMemberHistoryCondition
+    extra = 0
+    autocomplete_fields = ["condition"]
+    fieldsets = (
+        (None, {
+            "fields": (
+                "condition",
+                "condition_text",
+                "outcome",
+                "contributed_to_death",
+                "onset_text",
+            ),
+        }),
+        ("Notes", {
+            "fields": ("notes",),
+            "classes": ("collapse",),
+        }),
+    )
+    formfield_overrides = {
+        models.TextField: {"widget": forms.Textarea(attrs={"rows": 3})},
+    }
+
+
+@admin.register(FamilyMemberHistory)
+class FamilyMemberHistoryAdmin(admin.ModelAdmin):
+    inlines = (FamilyMemberHistoryConditionInline,)
+    list_display = ("id", "patient", "relationship", "status", "sex", "age_text", "deceased")
+    list_display_links = ("relationship",)
+    search_fields = ("relationship", "reason", "notes", "condition_links__condition_text")
+    list_filter = ("patient", "status", "relationship", "sex", "deceased")
+    ordering = ("patient", "relationship")
+    autocomplete_fields = ["patient"]
+    filter_horizontal = ("conditions",)
+
+
+class ClinicalImpressionFindingInline(admin.StackedInline):
+    model = ClinicalImpressionFinding
+    extra = 0
+    autocomplete_fields = ["condition", "observation"]
+    fieldsets = (
+        (None, {
+            "fields": (
+                "condition",
+                "observation",
+                "finding_text",
+            ),
+        }),
+        ("Basis", {
+            "fields": ("basis",),
+            "classes": ("collapse",),
+        }),
+    )
+    formfield_overrides = {
+        models.TextField: {"widget": forms.Textarea(attrs={"rows": 3})},
+    }
+
+
+@admin.register(ClinicalImpression)
+class ClinicalImpressionAdmin(admin.ModelAdmin):
+    inlines = (ClinicalImpressionFindingInline,)
+    list_display = ("id", "patient", "description", "status", "date", "encounter")
+    list_display_links = ("description",)
+    search_fields = ("description", "summary", "prognosis", "notes")
+    list_filter = ("patient", "status", "date")
+    ordering = ("-date", "-effective_datetime")
+    autocomplete_fields = [
+        "patient",
+        "encounter",
+        "assessor_practitioner",
+        "assessor_role",
+    ]
+    filter_horizontal = ("conditions", "observations", "problems", "investigations_observations")
 
 
 @admin.register(Practitioner)

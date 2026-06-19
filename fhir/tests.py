@@ -15,13 +15,19 @@ from django.test import TestCase
 from django.urls import reverse
 
 from clinical.models import (
+    AdverseEvent,
     CarePlan,
     CareTeam,
     CareTeamParticipant,
+    ClinicalImpression,
+    ClinicalImpressionFinding,
     Condition,
     Device,
     Encounter,
     EpisodeOfCare,
+    FamilyMemberHistory,
+    FamilyMemberHistoryCondition,
+    Immunization,
     Location,
     Medication,
     Observation,
@@ -853,6 +859,233 @@ class FHIRImportTests(TestCase):
         self.assertEqual(document.encounter, Encounter.objects.get())
         self.assertEqual(document.custodian, Organization.objects.get())
         self.assertEqual(document.authors.get(), Practitioner.objects.get())
+
+    def test_imports_adverse_event_family_history_and_clinical_impression(self):
+        payload = {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "pat-1",
+                        "name": [{"family": "Rivera", "given": ["Maya"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Practitioner",
+                        "id": "prac-1",
+                        "name": [{"text": "Dr. Ada Lovelace"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": "org-1",
+                        "name": "Example Health",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Location",
+                        "id": "loc-1",
+                        "name": "Main Clinic",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "PractitionerRole",
+                        "id": "role-1",
+                        "practitioner": {"reference": "Practitioner/prac-1"},
+                        "organization": {"reference": "Organization/org-1"},
+                        "code": [{"text": "Attending"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Encounter",
+                        "id": "enc-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "finished",
+                        "type": [{"text": "Office visit"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Condition",
+                        "id": "cond-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "code": {"text": "Asthma"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "id": "obs-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "code": {"text": "Wheezing"},
+                        "valueString": "Mild",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Immunization",
+                        "id": "imm-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "status": "completed",
+                        "vaccineCode": {"text": "Influenza vaccine"},
+                        "occurrenceDateTime": "2024-01-02",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Procedure",
+                        "id": "proc-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "completed",
+                        "code": {"text": "Nebulizer treatment"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Device",
+                        "id": "device-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Nebulizer"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "DocumentReference",
+                        "id": "doc-1",
+                        "status": "current",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Adverse event note"},
+                        "content": [{"attachment": {"contentType": "text/plain", "title": "Adverse event note"}}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "FamilyMemberHistory",
+                        "id": "fmh-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "status": "completed",
+                        "relationship": {"text": "Mother"},
+                        "sex": {"text": "female"},
+                        "ageAge": {"value": 67, "unit": "years"},
+                        "reasonReference": [{"reference": "Condition/cond-1"}],
+                        "condition": [
+                            {
+                                "code": {"text": "Asthma"},
+                                "outcome": {"text": "ongoing"},
+                                "onsetAge": {"value": 30, "unit": "years"},
+                                "contributedToDeath": False,
+                                "note": [{"text": "Mild family history."}],
+                            }
+                        ],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "ClinicalImpression",
+                        "id": "ci-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "encounter": {"reference": "Encounter/enc-1"},
+                        "assessor": {"reference": "PractitionerRole/role-1"},
+                        "status": "completed",
+                        "description": "Asthma assessment",
+                        "effectiveDateTime": "2024-01-02T10:00:00Z",
+                        "date": "2024-01-02T10:30:00Z",
+                        "problem": [{"reference": "Condition/cond-1"}],
+                        "investigation": [{"item": [{"reference": "Observation/obs-1"}]}],
+                        "finding": [
+                            {
+                                "itemReference": {"reference": "Condition/cond-1"},
+                                "basis": "Symptoms and exam.",
+                            },
+                            {
+                                "itemReference": {"reference": "Observation/obs-1"},
+                                "basis": "Observation supports finding.",
+                            },
+                        ],
+                        "summary": "Likely mild exacerbation.",
+                        "prognosisCodeableConcept": [{"text": "Good"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "AdverseEvent",
+                        "id": "ae-1",
+                        "actuality": "actual",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "encounter": {"reference": "Encounter/enc-1"},
+                        "event": {"text": "Medication reaction"},
+                        "date": "2024-01-02T11:00:00Z",
+                        "location": {"reference": "Location/loc-1"},
+                        "resultingCondition": [{"reference": "Condition/cond-1"}],
+                        "seriousness": {"text": "Non-serious"},
+                        "severity": {"text": "mild"},
+                        "outcome": {"text": "resolved"},
+                        "recorder": {"reference": "Practitioner/prac-1"},
+                        "contributor": [
+                            {"reference": "PractitionerRole/role-1"},
+                            {"reference": "Device/device-1"},
+                        ],
+                        "suspectEntity": [
+                            {
+                                "instance": {"reference": "Procedure/proc-1"},
+                                "causality": [{"assessment": {"text": "Possible"}}],
+                            },
+                            {"instance": {"reference": "Immunization/imm-1"}},
+                            {"instance": {"reference": "Device/device-1"}},
+                        ],
+                        "subjectMedicalHistory": [
+                            {"reference": "Condition/cond-1"},
+                            {"reference": "Observation/obs-1"},
+                            {"reference": "Immunization/imm-1"},
+                            {"reference": "Procedure/proc-1"},
+                        ],
+                        "referenceDocument": [{"reference": "DocumentReference/doc-1"}],
+                    }
+                },
+            ],
+        }
+
+        result = import_fhir_json(payload)
+
+        self.assertEqual(result.errors, [])
+        family_history = FamilyMemberHistory.objects.get()
+        self.assertEqual(family_history.relationship, "Mother")
+        self.assertEqual(family_history.conditions.get(), Condition.objects.get())
+        family_condition = FamilyMemberHistoryCondition.objects.get()
+        self.assertEqual(family_condition.condition, Condition.objects.get())
+        self.assertEqual(family_condition.condition_text, "Asthma")
+        self.assertEqual(family_condition.onset_text, "30 years")
+
+        clinical_impression = ClinicalImpression.objects.get()
+        self.assertEqual(clinical_impression.encounter, Encounter.objects.get())
+        self.assertEqual(clinical_impression.assessor_role, PractitionerRole.objects.get())
+        self.assertEqual(clinical_impression.problems.get(), Condition.objects.get())
+        self.assertEqual(clinical_impression.investigations_observations.get(), Observation.objects.get())
+        self.assertEqual(ClinicalImpressionFinding.objects.count(), 2)
+        self.assertEqual(clinical_impression.conditions.get(), Condition.objects.get())
+        self.assertEqual(clinical_impression.observations.get(), Observation.objects.get())
+
+        adverse_event = AdverseEvent.objects.get()
+        self.assertEqual(adverse_event.encounter, Encounter.objects.get())
+        self.assertEqual(adverse_event.location, Location.objects.get())
+        self.assertEqual(adverse_event.recorder_practitioner, Practitioner.objects.get())
+        self.assertEqual(adverse_event.resulting_conditions.get(), Condition.objects.get())
+        self.assertEqual(adverse_event.contributor_roles.get(), PractitionerRole.objects.get())
+        self.assertEqual(adverse_event.contributor_devices.get(), Device.objects.get())
+        self.assertEqual(adverse_event.suspect_procedures.get(), Procedure.objects.get())
+        self.assertEqual(adverse_event.suspect_immunizations.get(), Immunization.objects.get())
+        self.assertEqual(adverse_event.suspect_devices.get(), Device.objects.get())
+        self.assertEqual(adverse_event.reference_documents.get(), ClinicalDocument.objects.get())
+        self.assertEqual(adverse_event.subject_medical_history_conditions.get(), Condition.objects.get())
+        self.assertEqual(adverse_event.subject_medical_history_observations.get(), Observation.objects.get())
+        self.assertEqual(adverse_event.subject_medical_history_immunizations.get(), Immunization.objects.get())
+        self.assertEqual(adverse_event.subject_medical_history_procedures.get(), Procedure.objects.get())
 
     def test_missing_patient_reference_is_snapshotted_as_invalid(self):
         result = import_fhir_json(
