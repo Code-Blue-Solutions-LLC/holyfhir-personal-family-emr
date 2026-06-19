@@ -9,6 +9,8 @@ class ClinicalDocumentAdmin(admin.ModelAdmin):
         "patient",
         "title",
         "document_type",
+        "encounter",
+        "custodian",
         "source_name",
         "source_date",
     )
@@ -23,7 +25,9 @@ class ClinicalDocumentAdmin(admin.ModelAdmin):
     list_filter = (
         "patient",
         "document_type",
+        "custodian",
         "source_date",
     )
 
-    autocomplete_fields = ["patient"]
+    autocomplete_fields = ["patient", "encounter", "custodian"]
+    filter_horizontal = ("authors", "related_documents")

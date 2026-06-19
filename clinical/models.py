@@ -93,6 +93,13 @@ class Observation(models.Model):
         blank=True,
         related_name="observations",
     )
+    device = models.ForeignKey(
+        "Device",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="observations",
+    )
     category = models.CharField(max_length=20, choices=OBSERVATION_TYPES, default="other")
     name = models.CharField(max_length=255)
     loinc_code = models.CharField(max_length=30, blank=True)
@@ -139,6 +146,7 @@ class Specimen(models.Model):
 
 class Encounter(models.Model):
     patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="encounters")
+    episodes_of_care = models.ManyToManyField("EpisodeOfCare", blank=True, related_name="encounters")
     encounter_type = models.CharField(max_length=100, blank=True)  # office visit, ED, inpatient
     status = models.CharField(max_length=30, blank=True)
     start_time = models.DateTimeField(null=True, blank=True)
@@ -157,6 +165,46 @@ class Encounter(models.Model):
 
     def __str__(self):
         return self.encounter_type or self.reason or f"Visit #{self.pk}"
+
+
+class Device(models.Model):
+    patient = models.ForeignKey(
+        PatientProfile,
+        on_delete=models.CASCADE,
+        related_name="devices",
+        null=True,
+        blank=True,
+    )
+    owner = models.ForeignKey(
+        "Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="devices",
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="devices",
+    )
+    display_name = models.CharField(max_length=255)
+    device_type = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=30, blank=True)
+    manufacturer = models.CharField(max_length=255, blank=True)
+    model_number = models.CharField(max_length=255, blank=True)
+    serial_number = models.CharField(max_length=255, blank=True)
+    lot_number = models.CharField(max_length=255, blank=True)
+    distinct_identifier = models.CharField(max_length=255, blank=True)
+    udi_carrier = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.display_name
 
 
 class CareTeam(models.Model):
@@ -209,6 +257,171 @@ class CarePlan(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class PractitionerRole(models.Model):
+    practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="roles",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="practitioner_roles",
+    )
+    locations = models.ManyToManyField("Location", blank=True, related_name="practitioner_roles")
+    active = models.BooleanField(default=True)
+    role = models.CharField(max_length=255, blank=True)
+    specialty = models.CharField(max_length=255, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Practitioner Role"
+        verbose_name_plural = "Practitioner Roles"
+
+    def __str__(self):
+        parts = [str(part) for part in [self.practitioner, self.role, self.organization] if part]
+        return " - ".join(parts) or f"Practitioner Role #{self.pk}"
+
+
+class ServiceRequest(models.Model):
+    patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="service_requests")
+    encounter = models.ForeignKey(
+        Encounter,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="service_requests",
+    )
+    requester_practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_services",
+    )
+    requester_role = models.ForeignKey(
+        PractitionerRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_services",
+    )
+    requester_organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_services",
+    )
+    requester_device = models.ForeignKey(
+        Device,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_services",
+    )
+    care_plans = models.ManyToManyField(CarePlan, blank=True, related_name="service_requests")
+    replaces = models.ManyToManyField("self", blank=True, symmetrical=False, related_name="replacement_requests")
+    performers_practitioners = models.ManyToManyField(
+        "Practitioner",
+        blank=True,
+        related_name="service_request_performances",
+    )
+    performers_roles = models.ManyToManyField(
+        PractitionerRole,
+        blank=True,
+        related_name="service_request_performances",
+    )
+    performers_organizations = models.ManyToManyField(
+        "Organization",
+        blank=True,
+        related_name="service_request_performances",
+    )
+    performers_care_teams = models.ManyToManyField(CareTeam, blank=True, related_name="service_requests")
+    performers_devices = models.ManyToManyField(Device, blank=True, related_name="service_request_performances")
+    locations = models.ManyToManyField("Location", blank=True, related_name="service_requests")
+    conditions = models.ManyToManyField(Condition, blank=True, related_name="service_requests")
+    specimens = models.ManyToManyField(Specimen, blank=True, related_name="service_requests")
+    name = models.CharField(max_length=255)
+    status = models.CharField(max_length=30, blank=True)
+    intent = models.CharField(max_length=30, blank=True)
+    category = models.CharField(max_length=255, blank=True)
+    priority = models.CharField(max_length=30, blank=True)
+    do_not_perform = models.BooleanField(default=False)
+    authored_on = models.DateTimeField(null=True, blank=True)
+    occurrence_start = models.DateTimeField(null=True, blank=True)
+    occurrence_end = models.DateTimeField(null=True, blank=True)
+    performer_type = models.CharField(max_length=255, blank=True)
+    location_code = models.CharField(max_length=255, blank=True)
+    reason = models.CharField(max_length=255, blank=True)
+    patient_instruction = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Service Request"
+        verbose_name_plural = "Service Requests"
+
+    def __str__(self):
+        return self.name
+
+
+class EpisodeOfCare(models.Model):
+    patient = models.ForeignKey(PatientProfile, on_delete=models.CASCADE, related_name="episodes_of_care")
+    managing_organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="episodes_of_care",
+    )
+    care_manager_practitioner = models.ForeignKey(
+        "Practitioner",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_episodes",
+    )
+    care_manager_role = models.ForeignKey(
+        PractitionerRole,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_episodes",
+    )
+    referral_requests = models.ManyToManyField(ServiceRequest, blank=True, related_name="episodes_of_care")
+    care_teams = models.ManyToManyField(CareTeam, blank=True, related_name="episodes_of_care")
+    status = models.CharField(max_length=30, blank=True)
+    episode_type = models.CharField(max_length=255, blank=True)
+    diagnosis_summary = models.TextField(blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Episode of Care"
+        verbose_name_plural = "Episodes of Care"
+
+    def __str__(self):
+        return self.episode_type or f"Episode of Care #{self.pk}"
 
 
 class CareTeamParticipant(models.Model):
@@ -280,6 +493,7 @@ class Procedure(models.Model):
         related_name="procedures",
     )
     care_plans = models.ManyToManyField(CarePlan, blank=True, related_name="procedures")
+    service_requests = models.ManyToManyField(ServiceRequest, blank=True, related_name="procedures")
     conditions = models.ManyToManyField(Condition, blank=True, related_name="procedures")
     name = models.CharField(max_length=255)
     status = models.CharField(max_length=30, blank=True)

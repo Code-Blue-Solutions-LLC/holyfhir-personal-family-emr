@@ -8,16 +8,15 @@
     [x] CarePlan - care plans with condition/care-team relationships
     [x] Procedure - high priority; patient-facing care history such as surgeries, imaging procedures, treatments, and completed actions
     [ ] DiagnosticReport - high priority; groups labs/imaging reports and can point to observations, documents, and specimens
-    [ ] ServiceRequest - medium-high priority; orders, referrals, and requested services tied to encounters/procedures
+    [x] ServiceRequest - medium-high priority; orders, referrals, and requested services tied to encounters/procedures
     [x] Specimen - medium priority; supporting data for labs and diagnostic reports
-    [ ] EpisodeOfCare - medium priority; groups visits/actions into a larger care episode
-    [ ] PractitionerRole - medium priority; connects practitioners to organizations, specialties, locations, and roles
-    [ ] Device - lower-medium priority; implanted devices, medical equipment, and patient devices
+    [x] EpisodeOfCare - medium priority; groups visits/actions into a larger care episode
+    [x] PractitionerRole - medium priority; connects practitioners to organizations, specialties, locations, and roles
+    [x] Device - lower-medium priority; implanted devices, medical equipment, and patient devices
     [ ] Binary - seen in older invalid snapshots; decide whether to import as document attachments or keep as snapshots
     [ ] Medication - seen in older invalid snapshots; decide whether to map to medication catalog/details or keep using MedicationRequest/MedicationStatement only
     [ ] AllergyIntolerance orphan strategy - parser exists, but sample allergies reference patient IDs missing from Patient.000.ndjson
     [ ] CareTeam sample coverage - importer exists, but the development sample zip has no CareTeam resources
-    [ ] Careplans
 [ ] add relationships between imported resources
     [ ] Observation.encounter -> Encounter
         [ ] FHIR source: Observation.encounter
@@ -31,25 +30,25 @@
         [ ] FHIR source: Observation.specimen
         [x] Django shape: Observation.specimen nullable FK to Specimen
         [ ] Use case: connect lab results to specimen/source material
-    [ ] Observation.device -> future Device
+    [x] Observation.device -> Device
         [ ] FHIR source: Observation.device
-        [ ] Django shape: Observation.device nullable FK once Device is supported
+        [x] Django shape: Observation.device nullable FK to Device
         [ ] Use case: connect readings to measuring device
-    [ ] ClinicalDocument.encounter -> Encounter
+    [x] ClinicalDocument.encounter -> Encounter
         [ ] FHIR source: DocumentReference.context.encounter
-        [ ] Django shape: ClinicalDocument.encounter nullable FK to Encounter, related_name="documents"
+        [x] Django shape: ClinicalDocument.encounter nullable FK to Encounter, related_name="documents"
         [ ] Use case: show notes/documents on the visit where they were created
-    [ ] ClinicalDocument.authors -> Practitioner/Organization
+    [x] ClinicalDocument.authors -> Practitioner
         [ ] FHIR source: DocumentReference.author
-        [ ] Django shape: M2M if supporting multiple authors; otherwise nullable FK plus source_name fallback
+        [x] Django shape: M2M to Practitioner, with source_name fallback
         [ ] Use case: who wrote or generated the document
-    [ ] ClinicalDocument.custodian -> Organization
+    [x] ClinicalDocument.custodian -> Organization
         [ ] FHIR source: DocumentReference.custodian
-        [ ] Django shape: ClinicalDocument.custodian nullable FK to Organization
+        [x] Django shape: ClinicalDocument.custodian nullable FK to Organization
         [ ] Use case: organization that maintains the document
-    [ ] ClinicalDocument.related_documents -> ClinicalDocument
+    [x] ClinicalDocument.related_documents -> ClinicalDocument
         [ ] FHIR source: DocumentReference.relatesTo
-        [ ] Django shape: self M2M through model with relationship code such as replaces/transforms/signs/appends
+        [x] Django shape: self M2M; relationship code can be added later if needed
         [ ] Use case: preserve document version/replacement relationships
     [ ] Medication.encounter -> Encounter
         [ ] FHIR source: MedicationRequest.encounter; MedicationStatement.context can reference Encounter/EpisodeOfCare

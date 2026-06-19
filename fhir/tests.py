@@ -19,14 +19,18 @@ from clinical.models import (
     CareTeam,
     CareTeamParticipant,
     Condition,
+    Device,
     Encounter,
+    EpisodeOfCare,
     Location,
     Medication,
     Observation,
     Organization,
     Practitioner,
+    PractitionerRole,
     Procedure,
     ProcedurePerformer,
+    ServiceRequest,
     Specimen,
 )
 from documents.models import ClinicalDocument
@@ -625,6 +629,230 @@ class FHIRImportTests(TestCase):
         self.assertTrue(FHIRLink.objects.filter(resource_type="CarePlan", django_model="clinical.CarePlan").exists())
         self.assertTrue(FHIRLink.objects.filter(resource_type="Procedure", django_model="clinical.Procedure").exists())
         self.assertTrue(FHIRLink.objects.filter(resource_type="Specimen", django_model="clinical.Specimen").exists())
+
+    def test_imports_service_request_episode_device_and_practitioner_role_relationships(self):
+        payload = {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "pat-1",
+                        "name": [{"family": "Rivera", "given": ["Maya"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Organization",
+                        "id": "org-1",
+                        "name": "Example Health",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Location",
+                        "id": "loc-1",
+                        "name": "Main Clinic",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Practitioner",
+                        "id": "prac-1",
+                        "name": [{"text": "Dr. Ada Lovelace"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "PractitionerRole",
+                        "id": "role-1",
+                        "active": True,
+                        "practitioner": {"reference": "Practitioner/prac-1"},
+                        "organization": {"reference": "Organization/org-1"},
+                        "code": [{"text": "Ordering clinician"}],
+                        "specialty": [{"text": "Family Medicine"}],
+                        "location": [{"reference": "Location/loc-1"}],
+                        "period": {"start": "2024-01-01", "end": "2024-12-31"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Encounter",
+                        "id": "enc-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "finished",
+                        "type": [{"text": "Office visit"}],
+                        "episodeOfCare": [{"reference": "EpisodeOfCare/episode-1"}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Condition",
+                        "id": "cond-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "code": {"text": "Knee pain"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "CarePlan",
+                        "id": "plan-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "active",
+                        "intent": "plan",
+                        "title": "Knee care plan",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "CareTeam",
+                        "id": "team-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "name": "Primary care team",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Device",
+                        "id": "device-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "owner": {"reference": "Organization/org-1"},
+                        "location": {"reference": "Location/loc-1"},
+                        "status": "active",
+                        "type": {"text": "Blood pressure cuff"},
+                        "deviceName": [{"name": "Home BP cuff"}],
+                        "manufacturer": "Example Devices",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Specimen",
+                        "id": "spec-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Blood specimen"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "id": "obs-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "code": {"text": "Blood pressure"},
+                        "device": {"reference": "Device/device-1"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "ServiceRequest",
+                        "id": "sr-2",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "status": "completed",
+                        "intent": "order",
+                        "code": {"text": "Old order"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "ServiceRequest",
+                        "id": "sr-1",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "encounter": {"reference": "Encounter/enc-1"},
+                        "basedOn": [{"reference": "CarePlan/plan-1"}],
+                        "replaces": [{"reference": "ServiceRequest/sr-2"}],
+                        "status": "active",
+                        "intent": "order",
+                        "category": [{"text": "Imaging"}],
+                        "priority": "routine",
+                        "code": {"text": "Knee x-ray"},
+                        "authoredOn": "2024-01-02T10:00:00Z",
+                        "requester": {"reference": "PractitionerRole/role-1"},
+                        "performer": [
+                            {"reference": "Practitioner/prac-1"},
+                            {"reference": "Organization/org-1"},
+                            {"reference": "CareTeam/team-1"},
+                            {"reference": "Device/device-1"},
+                        ],
+                        "locationReference": [{"reference": "Location/loc-1"}],
+                        "reasonReference": [{"reference": "Condition/cond-1"}],
+                        "specimen": [{"reference": "Specimen/spec-1"}],
+                        "patientInstruction": "Please schedule this week.",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "EpisodeOfCare",
+                        "id": "episode-1",
+                        "patient": {"reference": "Patient/pat-1"},
+                        "status": "active",
+                        "type": [{"text": "Orthopedic episode"}],
+                        "managingOrganization": {"reference": "Organization/org-1"},
+                        "careManager": {"reference": "PractitionerRole/role-1"},
+                        "team": [{"reference": "CareTeam/team-1"}],
+                        "referralRequest": [{"reference": "ServiceRequest/sr-1"}],
+                        "period": {"start": "2024-01-02", "end": "2024-03-02"},
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "DocumentReference",
+                        "id": "doc-1",
+                        "status": "current",
+                        "subject": {"reference": "Patient/pat-1"},
+                        "type": {"text": "Progress note"},
+                        "author": [{"reference": "Practitioner/prac-1"}],
+                        "custodian": {"reference": "Organization/org-1"},
+                        "context": {"encounter": [{"reference": "Encounter/enc-1"}]},
+                        "content": [{"attachment": {"contentType": "text/plain", "title": "Progress note"}}],
+                    }
+                },
+            ],
+        }
+
+        result = import_fhir_json(payload)
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(PractitionerRole.objects.count(), 1)
+        self.assertEqual(Device.objects.count(), 1)
+        self.assertEqual(ServiceRequest.objects.count(), 2)
+        self.assertEqual(EpisodeOfCare.objects.count(), 1)
+
+        role = PractitionerRole.objects.get()
+        self.assertEqual(role.practitioner, Practitioner.objects.get())
+        self.assertEqual(role.organization, Organization.objects.get())
+        self.assertEqual(role.role, "Ordering clinician")
+        self.assertEqual(role.specialty, "Family Medicine")
+        self.assertEqual(role.locations.get(), Location.objects.get())
+
+        device = Device.objects.get()
+        self.assertEqual(device.patient, PatientProfile.objects.get())
+        self.assertEqual(device.owner, Organization.objects.get())
+        self.assertEqual(device.location, Location.objects.get())
+        self.assertEqual(Observation.objects.get().device, device)
+
+        service_request = ServiceRequest.objects.get(name="Knee x-ray")
+        self.assertEqual(service_request.encounter, Encounter.objects.get())
+        self.assertEqual(service_request.requester_role, role)
+        self.assertEqual(service_request.care_plans.get(), CarePlan.objects.get())
+        self.assertEqual(service_request.replaces.get().name, "Old order")
+        self.assertEqual(service_request.performers_practitioners.get(), Practitioner.objects.get())
+        self.assertEqual(service_request.performers_organizations.get(), Organization.objects.get())
+        self.assertEqual(service_request.performers_care_teams.get(), CareTeam.objects.get())
+        self.assertEqual(service_request.performers_devices.get(), device)
+        self.assertEqual(service_request.locations.get(), Location.objects.get())
+        self.assertEqual(service_request.conditions.get(), Condition.objects.get())
+        self.assertEqual(service_request.specimens.get(), Specimen.objects.get())
+
+        episode = EpisodeOfCare.objects.get()
+        self.assertEqual(episode.managing_organization, Organization.objects.get())
+        self.assertEqual(episode.care_manager_role, role)
+        self.assertEqual(episode.referral_requests.get(), service_request)
+        self.assertEqual(episode.care_teams.get(), CareTeam.objects.get())
+        self.assertEqual(Encounter.objects.get().episodes_of_care.get(), episode)
+
+        document = ClinicalDocument.objects.get()
+        self.assertEqual(document.encounter, Encounter.objects.get())
+        self.assertEqual(document.custodian, Organization.objects.get())
+        self.assertEqual(document.authors.get(), Practitioner.objects.get())
 
     def test_missing_patient_reference_is_snapshotted_as_invalid(self):
         result = import_fhir_json(

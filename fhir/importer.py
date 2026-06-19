@@ -15,15 +15,19 @@ from clinical.models import (
     CareTeam,
     CareTeamParticipant,
     Condition,
+    Device,
     Encounter,
+    EpisodeOfCare,
     Immunization,
     Location,
     Medication,
     Observation,
     Organization,
     Practitioner,
+    PractitionerRole,
     Procedure,
     ProcedurePerformer,
+    ServiceRequest,
     Specimen,
 )
 from documents.models import ClinicalDocument
@@ -43,8 +47,12 @@ SUPPORTED_RESOURCE_TYPES = {
     "Encounter",
     "CareTeam",
     "CarePlan",
+    "Device",
     "DocumentReference",
+    "EpisodeOfCare",
+    "PractitionerRole",
     "Procedure",
+    "ServiceRequest",
     "Specimen",
     "Practitioner",
     "Organization",
@@ -53,6 +61,7 @@ SUPPORTED_RESOURCE_TYPES = {
 
 PATIENTLESS_RESOURCE_TYPES = {
     "Practitioner",
+    "PractitionerRole",
     "Organization",
     "Location",
 }
@@ -101,6 +110,7 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
 
             importer = {
                 "Practitioner": _import_practitioner,
+                "PractitionerRole": _import_practitioner_role,
                 "Organization": _import_organization,
                 "Location": _import_location,
             }[resource_type]
@@ -135,8 +145,12 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 "Encounter": _import_encounter,
                 "CareTeam": _import_care_team,
                 "CarePlan": _import_care_plan,
+                "Device": _import_device,
                 "DocumentReference": _import_document_reference,
+                "EpisodeOfCare": _import_episode_of_care,
+                "PractitionerRole": _import_practitioner_role,
                 "Procedure": _import_procedure,
+                "ServiceRequest": _import_service_request,
                 "Specimen": _import_specimen,
                 "Practitioner": _import_practitioner,
                 "Organization": _import_organization,
@@ -153,8 +167,18 @@ def import_fhir_payloads(payloads, source="imported", target_patient=None):
                 _sync_observation_relationships(resource)
             elif resource_type == "CarePlan":
                 _sync_care_plan_relationships(resource)
+            elif resource_type == "DocumentReference":
+                _sync_document_reference_relationships(resource)
+            elif resource_type == "Encounter":
+                _sync_encounter_relationships(resource)
+            elif resource_type == "EpisodeOfCare":
+                _sync_episode_of_care_relationships(resource)
+            elif resource_type == "PractitionerRole":
+                _sync_practitioner_role_relationships(resource)
             elif resource_type == "Procedure":
                 _sync_procedure_relationships(resource)
+            elif resource_type == "ServiceRequest":
+                _sync_service_request_relationships(resource)
             elif resource_type == "Specimen":
                 _sync_specimen_relationships(resource)
 
@@ -419,6 +443,26 @@ def _import_care_plan(resource, patient):
     return obj, created
 
 
+def _import_device(resource, patient):
+    obj = _object_for_resource(resource, "clinical.Device") or Device(patient=patient)
+    obj.patient = patient or _reference_as(resource.get("patient"), PatientProfile)
+    obj.owner = _reference_as(resource.get("owner"), Organization)
+    obj.location = _reference_as(resource.get("location"), Location)
+    obj.display_name = _device_display_name(resource)
+    obj.device_type = _codeable_text(resource.get("type")) or ""
+    obj.status = resource.get("status") or ""
+    obj.manufacturer = resource.get("manufacturer") or ""
+    obj.model_number = resource.get("modelNumber") or ""
+    obj.serial_number = resource.get("serialNumber") or ""
+    obj.lot_number = resource.get("lotNumber") or ""
+    obj.distinct_identifier = resource.get("distinctIdentifier") or ""
+    obj.udi_carrier = _device_udi_carrier(resource)
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    return obj, created
+
+
 def _import_document_reference(resource, patient):
     obj = _object_for_resource(resource, "documents.ClinicalDocument") or ClinicalDocument(patient=patient)
     attachment = _document_reference_attachment(resource)
@@ -438,6 +482,35 @@ def _import_document_reference(resource, patient):
 
     created = obj.pk is None
     obj.save()
+    _sync_document_reference_relationships(resource, obj)
+    return obj, created
+
+
+def _import_episode_of_care(resource, patient):
+    obj = _object_for_resource(resource, "clinical.EpisodeOfCare") or EpisodeOfCare(patient=patient)
+    period = resource.get("period") or {}
+    diagnosis = []
+    for item in resource.get("diagnosis") or []:
+        condition = _display(item.get("condition"))
+        role = _codeable_text(item.get("role"))
+        rank = item.get("rank")
+        parts = [part for part in [condition, role, f"rank {rank}" if rank else ""] if part]
+        if parts:
+            diagnosis.append(" - ".join(parts))
+
+    obj.patient = patient
+    obj.status = resource.get("status") or ""
+    obj.episode_type = _codeable_text(_first(resource.get("type"))) or "Episode of care"
+    obj.managing_organization = _reference_as(resource.get("managingOrganization"), Organization)
+    obj.care_manager_practitioner = _reference_as(resource.get("careManager"), Practitioner)
+    obj.care_manager_role = _reference_as(resource.get("careManager"), PractitionerRole)
+    obj.diagnosis_summary = "\n".join(diagnosis)
+    obj.start_date = _date(period.get("start"))
+    obj.end_date = _date(period.get("end"))
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_episode_of_care_relationships(resource, obj)
     return obj, created
 
 
@@ -467,6 +540,35 @@ def _import_procedure(resource, patient):
     return obj, created
 
 
+def _import_service_request(resource, patient):
+    obj = _object_for_resource(resource, "clinical.ServiceRequest") or ServiceRequest(patient=patient)
+    occurrence = resource.get("occurrencePeriod") or {}
+    obj.patient = patient
+    obj.encounter = _reference_as(resource.get("encounter"), Encounter)
+    obj.requester_practitioner = _reference_as(resource.get("requester"), Practitioner)
+    obj.requester_role = _reference_as(resource.get("requester"), PractitionerRole)
+    obj.requester_organization = _reference_as(resource.get("requester"), Organization)
+    obj.requester_device = _reference_as(resource.get("requester"), Device)
+    obj.name = _codeable_text(resource.get("code")) or "Service request"
+    obj.status = resource.get("status") or ""
+    obj.intent = resource.get("intent") or ""
+    obj.category = _codeable_text(_first(resource.get("category"))) or ""
+    obj.priority = resource.get("priority") or ""
+    obj.do_not_perform = bool(resource.get("doNotPerform", False))
+    obj.authored_on = _datetime(resource.get("authoredOn"))
+    obj.occurrence_start = _datetime(resource.get("occurrenceDateTime") or occurrence.get("start"))
+    obj.occurrence_end = _datetime(occurrence.get("end"))
+    obj.performer_type = _codeable_text(resource.get("performerType")) or ""
+    obj.location_code = _codeable_text(_first(resource.get("locationCode"))) or ""
+    obj.reason = _codeable_text(_first(resource.get("reasonCode"))) or ""
+    obj.patient_instruction = resource.get("patientInstruction") or ""
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_service_request_relationships(resource, obj)
+    return obj, created
+
+
 def _import_specimen(resource, patient):
     obj = _object_for_resource(resource, "clinical.Specimen") or Specimen(patient=patient)
     collection = resource.get("collection") or {}
@@ -485,6 +587,25 @@ def _import_specimen(resource, patient):
     created = obj.pk is None
     obj.save()
     _sync_specimen_relationships(resource, obj)
+    return obj, created
+
+
+def _import_practitioner_role(resource, patient=None):
+    obj = _object_for_resource(resource, "clinical.PractitionerRole") or PractitionerRole()
+    period = resource.get("period") or {}
+    obj.practitioner = _reference_as(resource.get("practitioner"), Practitioner)
+    obj.organization = _reference_as(resource.get("organization"), Organization)
+    obj.active = bool(resource.get("active", True))
+    obj.role = _codeable_text(_first(resource.get("code"))) or ""
+    obj.specialty = _codeable_text(_first(resource.get("specialty"))) or ""
+    obj.start_date = _date(period.get("start"))
+    obj.end_date = _date(period.get("end"))
+    obj.phone = _telecom(resource, "phone")
+    obj.email = _telecom(resource, "email")
+    obj.notes = _notes(resource)
+    created = obj.pk is None
+    obj.save()
+    _sync_practitioner_role_relationships(resource, obj)
     return obj, created
 
 
@@ -553,14 +674,18 @@ def _object_for_resource(resource, django_model):
         Immunization,
         Observation,
         Specimen,
+        Device,
         Encounter,
+        EpisodeOfCare,
         CareTeam,
         CarePlan,
         CareTeamParticipant,
         ClinicalDocument,
         Practitioner,
+        PractitionerRole,
         Procedure,
         ProcedurePerformer,
+        ServiceRequest,
         Organization,
         Location,
     ):
@@ -575,14 +700,19 @@ def _object_for_reference(reference):
     resource_type, resource_id = reference.split("/", 1)
     model_by_resource_type = {
         "Practitioner": "clinical.Practitioner",
+        "PractitionerRole": "clinical.PractitionerRole",
         "Organization": "clinical.Organization",
         "Location": "clinical.Location",
         "Encounter": "clinical.Encounter",
+        "EpisodeOfCare": "clinical.EpisodeOfCare",
         "Condition": "clinical.Condition",
         "CareTeam": "clinical.CareTeam",
         "CarePlan": "clinical.CarePlan",
+        "Device": "clinical.Device",
         "Procedure": "clinical.Procedure",
+        "ServiceRequest": "clinical.ServiceRequest",
         "Specimen": "clinical.Specimen",
+        "DocumentReference": "documents.ClinicalDocument",
     }
     django_model = model_by_resource_type.get(resource_type)
     if not django_model:
@@ -798,6 +928,27 @@ def _care_team_managing_organizations(resource):
     return organizations
 
 
+def _device_display_name(resource):
+    device_name = _first(resource.get("deviceName")) or {}
+    udi_carrier = _first(resource.get("udiCarrier")) or {}
+    return (
+        device_name.get("name")
+        or resource.get("modelNumber")
+        or resource.get("manufacturer")
+        or udi_carrier.get("deviceIdentifier")
+        or "Device"
+    )
+
+
+def _device_udi_carrier(resource):
+    values = []
+    for carrier in resource.get("udiCarrier") or []:
+        carrier_text = carrier.get("carrierHRF") or carrier.get("carrierAIDC") or carrier.get("deviceIdentifier")
+        if carrier_text:
+            values.append(carrier_text)
+    return "\n".join(values)
+
+
 def _document_reference_attachment(resource):
     content = _first(resource.get("content")) or {}
     attachment = content.get("attachment") or {}
@@ -842,14 +993,67 @@ def _file_extension_for_mime_type(mime_type):
     }.get(mime_type, ".bin")
 
 
+def _sync_document_reference_relationships(resource, document=None):
+    document = document or _object_for_resource(resource, "documents.ClinicalDocument")
+    if not document:
+        return
+
+    context = resource.get("context") or {}
+    encounter = _reference_as(_first(context.get("encounter")), Encounter)
+    custodian = _reference_as(resource.get("custodian"), Organization)
+    changed = []
+    if encounter and document.encounter_id != encounter.id:
+        document.encounter = encounter
+        changed.append("encounter")
+    if custodian and document.custodian_id != custodian.id:
+        document.custodian = custodian
+        changed.append("custodian")
+    if changed:
+        document.save(update_fields=changed)
+
+    authors = []
+    for reference in resource.get("author") or []:
+        author = _reference_as(reference, Practitioner)
+        if author:
+            authors.append(author)
+    document.authors.set(authors)
+
+    related_documents = []
+    for related in resource.get("relatesTo") or []:
+        related_document = _reference_as(related.get("target"), ClinicalDocument)
+        if related_document:
+            related_documents.append(related_document)
+    document.related_documents.set(related_documents)
+
+
+def _sync_encounter_relationships(resource, encounter=None):
+    encounter = encounter or _object_for_resource(resource, "clinical.Encounter")
+    if not encounter:
+        return
+
+    episodes = []
+    for reference in resource.get("episodeOfCare") or []:
+        episode = _reference_as(reference, EpisodeOfCare)
+        if episode:
+            episodes.append(episode)
+    encounter.episodes_of_care.set(episodes)
+
+
 def _sync_observation_relationships(resource, observation=None):
     observation = observation or _object_for_resource(resource, "clinical.Observation")
     if not observation:
         return
     specimen = _reference_as(resource.get("specimen"), Specimen)
+    device = _reference_as(resource.get("device"), Device)
+    changed = []
     if specimen and observation.specimen_id != specimen.id:
         observation.specimen = specimen
-        observation.save(update_fields=["specimen"])
+        changed.append("specimen")
+    if device and observation.device_id != device.id:
+        observation.device = device
+        changed.append("device")
+    if changed:
+        observation.save(update_fields=changed)
 
 
 def _sync_care_plan_relationships(resource, care_plan=None):
@@ -896,6 +1100,13 @@ def _sync_procedure_relationships(resource, procedure=None):
             care_plans.append(care_plan)
     procedure.care_plans.set(care_plans)
 
+    service_requests = []
+    for reference in resource.get("basedOn") or []:
+        service_request = _reference_as(reference, ServiceRequest)
+        if service_request:
+            service_requests.append(service_request)
+    procedure.service_requests.set(service_requests)
+
     _sync_procedure_performers(resource, procedure)
 
 
@@ -910,6 +1121,123 @@ def _sync_specimen_relationships(resource, specimen=None):
         if parent_specimen:
             parent_specimens.append(parent_specimen)
     specimen.parent_specimens.set(parent_specimens)
+
+
+def _sync_practitioner_role_relationships(resource, practitioner_role=None):
+    practitioner_role = practitioner_role or _object_for_resource(resource, "clinical.PractitionerRole")
+    if not practitioner_role:
+        return
+
+    locations = []
+    for reference in resource.get("location") or []:
+        location = _reference_as(reference, Location)
+        if location:
+            locations.append(location)
+    practitioner_role.locations.set(locations)
+
+
+def _sync_service_request_relationships(resource, service_request=None):
+    service_request = service_request or _object_for_resource(resource, "clinical.ServiceRequest")
+    if not service_request:
+        return
+
+    encounter = _reference_as(resource.get("encounter"), Encounter)
+    requester_practitioner = _reference_as(resource.get("requester"), Practitioner)
+    requester_role = _reference_as(resource.get("requester"), PractitionerRole)
+    requester_organization = _reference_as(resource.get("requester"), Organization)
+    requester_device = _reference_as(resource.get("requester"), Device)
+    changed = []
+    for field, value in [
+        ("encounter", encounter),
+        ("requester_practitioner", requester_practitioner),
+        ("requester_role", requester_role),
+        ("requester_organization", requester_organization),
+        ("requester_device", requester_device),
+    ]:
+        if value and getattr(service_request, f"{field}_id") != value.id:
+            setattr(service_request, field, value)
+            changed.append(field)
+    if changed:
+        service_request.save(update_fields=changed)
+
+    care_plans = []
+    for reference in resource.get("basedOn") or []:
+        care_plan = _reference_as(reference, CarePlan)
+        if care_plan:
+            care_plans.append(care_plan)
+    service_request.care_plans.set(care_plans)
+
+    replacements = []
+    for reference in resource.get("replaces") or []:
+        replacement = _reference_as(reference, ServiceRequest)
+        if replacement:
+            replacements.append(replacement)
+    service_request.replaces.set(replacements)
+
+    service_request.performers_practitioners.set(
+        [obj for obj in (_reference_as(reference, Practitioner) for reference in resource.get("performer") or []) if obj]
+    )
+    service_request.performers_roles.set(
+        [obj for obj in (_reference_as(reference, PractitionerRole) for reference in resource.get("performer") or []) if obj]
+    )
+    service_request.performers_organizations.set(
+        [obj for obj in (_reference_as(reference, Organization) for reference in resource.get("performer") or []) if obj]
+    )
+    service_request.performers_care_teams.set(
+        [obj for obj in (_reference_as(reference, CareTeam) for reference in resource.get("performer") or []) if obj]
+    )
+    service_request.performers_devices.set(
+        [obj for obj in (_reference_as(reference, Device) for reference in resource.get("performer") or []) if obj]
+    )
+    service_request.locations.set(
+        [
+            obj
+            for obj in (_reference_as(reference, Location) for reference in resource.get("locationReference") or [])
+            if obj
+        ]
+    )
+    service_request.conditions.set(
+        [
+            obj
+            for obj in (_reference_as(reference, Condition) for reference in resource.get("reasonReference") or [])
+            if obj
+        ]
+    )
+    service_request.specimens.set(
+        [obj for obj in (_reference_as(reference, Specimen) for reference in resource.get("specimen") or []) if obj]
+    )
+
+
+def _sync_episode_of_care_relationships(resource, episode=None):
+    episode = episode or _object_for_resource(resource, "clinical.EpisodeOfCare")
+    if not episode:
+        return
+
+    managing_organization = _reference_as(resource.get("managingOrganization"), Organization)
+    care_manager_practitioner = _reference_as(resource.get("careManager"), Practitioner)
+    care_manager_role = _reference_as(resource.get("careManager"), PractitionerRole)
+    changed = []
+    for field, value in [
+        ("managing_organization", managing_organization),
+        ("care_manager_practitioner", care_manager_practitioner),
+        ("care_manager_role", care_manager_role),
+    ]:
+        if value and getattr(episode, f"{field}_id") != value.id:
+            setattr(episode, field, value)
+            changed.append(field)
+    if changed:
+        episode.save(update_fields=changed)
+
+    episode.referral_requests.set(
+        [
+            obj
+            for obj in (_reference_as(reference, ServiceRequest) for reference in resource.get("referralRequest") or [])
+            if obj
+        ]
+    )
+    episode.care_teams.set(
+        [obj for obj in (_reference_as(reference, CareTeam) for reference in resource.get("team") or []) if obj]
+    )
 
 
 def _sync_procedure_performers(resource, procedure):
