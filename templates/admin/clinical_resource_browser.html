@@ -1,0 +1,124 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+  .resource-browser {
+    max-width: 1200px;
+  }
+
+  .resource-search {
+    margin-bottom: 18px;
+  }
+
+  .resource-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .resource-section summary {
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 14px 16px;
+  }
+
+  .resource-grid {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    padding: 0 16px 16px;
+  }
+
+  .resource-link {
+    align-items: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    color: #111827;
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    text-decoration: none;
+  }
+
+  .resource-link:hover {
+    background: #f8fafc;
+    color: #111827;
+    text-decoration: none;
+  }
+
+  .resource-icon {
+    color: #2563eb;
+    width: 20px;
+  }
+
+  .resource-count {
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="content">
+  <div class="container-fluid resource-browser">
+    <button type="button" class="btn btn-secondary mb-3" onclick="window.location.href='{% url 'fhir_explorer' %}'">
+      See Full FHIR Resource Directory
+      </button>
+    <input
+      id="resourceSearch"
+      class="form-control resource-search"
+      type="search"
+      placeholder="Search FHIR resources..."
+    >
+
+    {% for section in directory_sections %}
+      <details class="resource-section" open>
+        <summary>{{ section.title }}</summary>
+
+        <div class="resource-grid">
+          {% for card in section.cards %}
+            <a class="resource-link" href="{{ card.url }}">
+              <span class="resource-icon" aria-hidden="true">
+                <i class="{{ card.icon }}"></i>
+              </span>
+
+              <span class="resource-title">{{ card.title }}</span>
+
+              <span class="resource-count">
+                {{ card.count }}
+              </span>
+            </a>
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  const search = document.getElementById("resourceSearch");
+
+  search.addEventListener("input", function () {
+    const query = this.value.toLowerCase();
+
+    document.querySelectorAll(".resource-section").forEach(section => {
+      let visibleCount = 0;
+
+      section.querySelectorAll(".resource-link").forEach(link => {
+        const isVisible = link.innerText.toLowerCase().includes(query);
+        link.style.display = isVisible ? "" : "none";
+        if (isVisible) visibleCount++;
+      });
+
+      section.style.display = visibleCount ? "" : "none";
+
+      if (query) {
+        section.open = true;
+      }
+    });
+  });
+</script>
+{% endblock %}

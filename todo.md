@@ -243,5 +243,5 @@
 [ ] significant cleanup of admin page links needed
 [ ] another clarifying parse through every fhir resource documentation page 
 [ ] a reconsideration of each model being an admin page primarily - we can probably use many of them as related without the first-class admin page link, and have a full list of all first class admin pages on another page
-[ ] full page of links to each and every admin page
 [ ] normal person clinical dashboard, with admin pages mostly hidden but relevant ones shown 
+[ ] in fact, make an admin area for all the stuff

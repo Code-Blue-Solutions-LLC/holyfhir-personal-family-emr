@@ -303,8 +303,8 @@ JAZZMIN_SETTINGS = {
             "permissions": ["patients.add_patientprofile"],
         }],
         "clinical": [{
-            "name": "All Clinical Resources",
-            "url": "clinical_resources_directory",
+            "name": "Clinical Resources",
+            "url": "new_clinical_resources_directory",
             "icon": "fas fa-notes-medical",
             "permissions": ["clinical.view_condition"],
         }, {

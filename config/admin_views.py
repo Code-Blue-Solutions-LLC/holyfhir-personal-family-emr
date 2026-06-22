@@ -1,9 +1,13 @@
+
 from django.contrib import admin
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
+from .fhir_explorer_registry import build_fhir_explorer_sections
+from .personal_emr_resource_registry_alphabetized import build_personal_emr_resource_sections
+
 
 from clinical.models import (
     Account,
@@ -1205,8 +1209,7 @@ def clinical_resources_directory(request):
         "title": "Clinical Resources",
         "directory_sections": sections,
     }
-    return render(request, "admin/clinical_resources_directory.html", context)
-
+    return render(request, "admin/clinical_resource_browser.html", context)
 
 def patient_resources_directory(request, patient_id):
     patient = get_object_or_404(PatientProfile, pk=patient_id)
@@ -1335,6 +1338,22 @@ def patient_resources_directory(request, patient_id):
     }
     return render(request, "admin/patient_resources_directory.html", context)
 
+def fhir_explorer(request):
+    context = {
+        **admin.site.each_context(request),
+        "title": "FHIR Explorer",
+        "directory_sections": build_fhir_explorer_sections(),
+    }
+    return render(request, "admin/fhir_explorer.html", context)
+
+
+def new_clinical_resources_directory(request):
+    context = {
+        **admin.site.each_context(request),
+        "title": "All Clinical Resources",
+        "directory_sections": build_personal_emr_resource_sections(),
+    }
+    return render(request, "admin/clinical_resource_browser_core_highlight.html", context)
 
 def fhir_interop_hub(request):
     cards = [
@@ -1350,6 +1369,12 @@ def fhir_interop_hub(request):
             "url": reverse("admin:fhir_fhirresourcesnapshot_changelist"),
             "icon": "fas fa-database",
         },
+        {
+            "title": "FHIR Explorer",
+            "description": "Browse all 143+ FHIR resources, profiles, and definitions across the system.",
+            "url": reverse("fhir_explorer"),
+            "icon": "fas fa-search",
+        }
     ]
 
     context = {

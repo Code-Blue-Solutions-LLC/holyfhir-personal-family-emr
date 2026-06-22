@@ -1,0 +1,137 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+  .fhir-explorer { max-width: 1280px; }
+  .fhir-toolbar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .fhir-toolbar input, .fhir-toolbar select { max-width: 360px; }
+  .fhir-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .fhir-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; }
+  .fhir-stat strong { display: block; font-size: 1.25rem; }
+  .fhir-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+  .fhir-section summary { cursor: pointer; font-weight: 700; padding: 13px 16px; }
+  .fhir-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); padding: 0 16px 16px; }
+  .fhir-card { align-items: center; border: 1px solid #e5e7eb; border-radius: 10px; color: #111827; display: flex; gap: 10px; padding: 10px 12px; text-decoration: none; }
+  .fhir-card:hover { background: #f8fafc; color: #111827; text-decoration: none; }
+  .fhir-icon { color: #2563eb; width: 22px; }
+  .fhir-title { font-weight: 600; }
+  .fhir-count { color: #6b7280; font-size: .8rem; margin-left: auto; white-space: nowrap; }
+  .fhir-empty { color: #6b7280; padding: 20px 4px; }
+</style>
+
+<div class="content">
+  <div class="container-fluid fhir-explorer">
+    <h1>FHIR Explorer</h1>
+    <p class="text-muted">
+      Browse first-class HolyFHIR resources by category.
+    </p>
+
+    <div class="fhir-stats">
+      <div class="fhir-stat">
+        <strong id="visibleCount">0</strong>
+        visible resources
+      </div>
+      <div class="fhir-stat">
+        <strong>{{ directory_sections|length }}</strong>
+        sections
+      </div>
+    </div>
+
+    <div class="fhir-toolbar">
+      <input id="fhirSearch" class="form-control" type="search" placeholder="Search resources...">
+
+      <select id="fhirSectionFilter" class="form-control">
+        <option value="">All sections</option>
+        {% for section in directory_sections %}
+          <option value="{{ section.title|lower }}">{{ section.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="fhirEmpty" class="fhir-empty" hidden>
+      No resources match that search.
+    </div>
+
+    {% for section in directory_sections %}
+      <details class="fhir-section" data-section="{{ section.title|lower }}" open>
+        <summary>
+          {{ section.title }}
+          <span class="text-muted">({{ section.cards|length }})</span>
+        </summary>
+
+        <div class="fhir-grid">
+          {% for card in section.cards %}
+            <a
+              class="fhir-card"
+              href="{{ card.url }}"
+              data-title="{{ card.title|lower }}"
+              data-description="{{ card.description|lower }}"
+              data-section="{{ section.title|lower }}"
+            >
+              <span class="fhir-icon" aria-hidden="true">
+                <i class="{{ card.icon }}"></i>
+              </span>
+
+              <span class="fhir-title">{{ card.title }}</span>
+
+              <span class="fhir-count">
+                {{ card.count }}
+              </span>
+            </a>
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  const searchInput = document.getElementById("fhirSearch");
+  const sectionFilter = document.getElementById("fhirSectionFilter");
+  const visibleCount = document.getElementById("visibleCount");
+  const emptyMessage = document.getElementById("fhirEmpty");
+
+  function applyFHIRFilters() {
+    const query = searchInput.value.trim().toLowerCase();
+    const selectedSection = sectionFilter.value;
+    let totalVisible = 0;
+
+    document.querySelectorAll(".fhir-section").forEach(section => {
+      const sectionName = section.dataset.section;
+      let sectionVisible = 0;
+
+      section.querySelectorAll(".fhir-card").forEach(card => {
+        const matchesSearch =
+          !query ||
+          card.dataset.title.includes(query) ||
+          card.dataset.description.includes(query) ||
+          card.dataset.section.includes(query);
+
+        const matchesSection =
+          !selectedSection || sectionName === selectedSection;
+
+        const show = matchesSearch && matchesSection;
+        card.style.display = show ? "" : "none";
+
+        if (show) {
+          sectionVisible++;
+          totalVisible++;
+        }
+      });
+
+      section.style.display = sectionVisible ? "" : "none";
+
+      if (query || selectedSection) {
+        section.open = true;
+      }
+    });
+
+    visibleCount.textContent = totalVisible;
+    emptyMessage.hidden = totalVisible !== 0;
+  }
+
+  searchInput.addEventListener("input", applyFHIRFilters);
+  sectionFilter.addEventListener("change", applyFHIRFilters);
+  applyFHIRFilters();
+</script>
+{% endblock %}

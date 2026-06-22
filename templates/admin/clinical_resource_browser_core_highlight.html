@@ -1,0 +1,162 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+  .resource-browser {
+    max-width: 1200px;
+  }
+
+  .resource-search {
+    margin-bottom: 18px;
+  }
+
+  .resource-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .resource-section summary {
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 14px 16px;
+  }
+
+  .resource-section-core {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.10);
+  }
+
+  .resource-section-core summary {
+    color: #1e3a8a;
+  }
+
+  .core-chart-badge {
+    background: #2563eb;
+    border-radius: 999px;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-left: 8px;
+    padding: 5px 8px;
+    vertical-align: middle;
+  }
+
+  .resource-grid {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    padding: 0 16px 16px;
+  }
+
+  .resource-link {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    color: #111827;
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    text-decoration: none;
+  }
+
+  .resource-link:hover {
+    background: #f8fafc;
+    color: #111827;
+    text-decoration: none;
+  }
+
+  .resource-section-core .resource-link {
+    border-color: #bfdbfe;
+  }
+
+  .resource-section-core .resource-link:hover {
+    background: #f8fbff;
+  }
+
+  .resource-icon {
+    color: #2563eb;
+    width: 20px;
+  }
+
+  .resource-count {
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="content">
+  <div class="container-fluid resource-browser">
+    <button type="button" class="btn btn-secondary mb-3" onclick="window.location.href='{% url 'fhir_explorer' %}'">
+      See Full FHIR Resource Directory
+    </button>
+
+    <input
+      id="resourceSearch"
+      class="form-control resource-search"
+      type="search"
+      placeholder="Search FHIR resources..."
+    >
+
+    {% for section in directory_sections %}
+      <details class="resource-section{% if section.is_core_chart or section.title == 'Core Chart' %} resource-section-core{% endif %}" open>
+        <summary>
+          {{ section.title }}
+          {% if section.is_core_chart or section.title == 'Core Chart' %}
+            <span class="core-chart-badge">Core</span>
+          {% endif %}
+        </summary>
+
+        <div class="resource-grid">
+          {% for card in section.cards %}
+            <a class="resource-link" href="{{ card.url }}">
+              <span class="resource-icon" aria-hidden="true">
+                <i class="{{ card.icon }}"></i>
+              </span>
+
+              <span class="resource-title">{{ card.title }}</span>
+
+              <span class="resource-count">
+                {{ card.count }}
+              </span>
+            </a>
+          {% endfor %}
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  const search = document.getElementById("resourceSearch");
+
+  search.addEventListener("input", function () {
+    const query = this.value.toLowerCase();
+
+    document.querySelectorAll(".resource-section").forEach(section => {
+      let visibleCount = 0;
+
+      section.querySelectorAll(".resource-link").forEach(link => {
+        const isVisible = link.innerText.toLowerCase().includes(query);
+        link.style.display = isVisible ? "" : "none";
+        if (isVisible) visibleCount++;
+      });
+
+      section.style.display = visibleCount ? "" : "none";
+
+      if (query) {
+        section.open = true;
+      }
+    });
+  });
+</script>
+{% endblock %}
