@@ -328,6 +328,11 @@ JAZZMIN_SETTINGS = {
             "url": "fhir_import",
             "icon": "fas fa-file-import",
             "permissions": ["fhir.add_fhirresourcesnapshot"],
+        }, {
+            "name": "FHIR Explorer",
+            "url": "fhir_explorer",
+            "icon": "fas fa-search",
+            "permissions": ["fhir.view_fhirresourcesnapshot"],
         }],
     },
     
