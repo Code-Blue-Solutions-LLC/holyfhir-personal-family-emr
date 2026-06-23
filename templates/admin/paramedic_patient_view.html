@@ -71,7 +71,12 @@
       {% if medications %}
         <ul class="paramedic-list">
           {% for med in medications %}
-            <li><strong>{{ med.name }}</strong>{% if med.dosage_text %}: {{ med.dosage_text }}{% endif %}</li>
+            {% comment %} if active {% endcomment %}
+            {% if med.status == "active" %}
+              <li><strong>{{ med.name }}</strong>{% if med.dosage_text %}: {{ med.dosage_text }}{% endif %} <span style="color: #16a34a;">(active)</span></li>
+            {% else %}
+              <li><strong>{{ med.name }}</strong>{% if med.dosage_text %}: {{ med.dosage_text }}{% endif %} <span style="color: #dc2626;">(inactive)</span></li>
+            {% endif %}
           {% endfor %}
         </ul>
       {% else %}

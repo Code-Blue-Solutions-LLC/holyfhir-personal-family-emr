@@ -371,6 +371,9 @@ class PatientProfileAdmin(admin.ModelAdmin):
             "<dl>{}</dl>"
             '<div class="patient-overview-actions">'
             '<a class="btn btn-primary btn-sm" href="{}">View all patient resources</a>'
+            "<br/>"
+            "<br/>"
+            '<a class="btn btn-danger btn-sm" href="{}">Paramedic View</a>'
             "</div>"
             "</div>"
             '<div class="patient-overview-stats">{}</div>'
@@ -382,6 +385,7 @@ class PatientProfileAdmin(admin.ModelAdmin):
                 demographics,
             ),
             reverse("patient_resources_directory", args=[obj.pk]),
+            reverse("paramedic_patient_view", args=[obj.pk]),
             format_html_join("", "{}", ((stat,) for stat in stats)),
         )
 
@@ -534,6 +538,17 @@ class PatientProfileAdmin(admin.ModelAdmin):
     def full_name(self, obj):
         name = self._patient_name(obj)
         return format_html("<strong>{}</strong>", name or f"Patient #{obj.pk}")
+
+    def paramedic_view_link(self, obj):
+        if not obj.pk:
+            return "-"
+        url = reverse("paramedic_patient_view", args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}">Paramedic View</a>',
+            url,
+        )
+
+    paramedic_view_link.short_description = "Emergency"
 
     def _patient_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip()
