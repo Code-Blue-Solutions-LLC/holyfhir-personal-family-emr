@@ -115,6 +115,7 @@ from clinical.models import (
     NamingSystem,
     Observation,
     ObservationDefinition,
+    observation_component_summary,
     OperationDefinition,
     Organization,
     OrganizationAffiliation,
@@ -1265,6 +1266,7 @@ def _import_observation(resource, patient):
     obj.value_string = (
         resource.get("valueString")
         or _codeable_text(resource.get("valueCodeableConcept"))
+        or observation_component_summary(resource)
         or ""
     )
     obj.value_quantity = _decimal(value_quantity.get("value"))

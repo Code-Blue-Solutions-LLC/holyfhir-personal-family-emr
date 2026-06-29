@@ -209,6 +209,49 @@ class FHIRImportTests(TestCase):
         self.assertEqual(FHIRResourceSnapshot.objects.count(), 4)
         self.assertEqual(FHIRLink.objects.count(), 4)
 
+    def test_imports_observation_components_as_readable_result(self):
+        payload = {
+            "resourceType": "Bundle",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "pat-bp",
+                        "name": [{"family": "Rivera", "given": ["Maya"]}],
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "id": "bp-1",
+                        "subject": {"reference": "Patient/pat-bp"},
+                        "category": [{"text": "Vital Signs"}],
+                        "code": {"text": "Blood pressure"},
+                        "component": [
+                            {
+                                "code": {"text": "Systolic blood pressure"},
+                                "valueQuantity": {"value": 122, "unit": "mmHg"},
+                            },
+                            {
+                                "code": {"text": "Diastolic blood pressure"},
+                                "valueQuantity": {"value": 78, "unit": "mmHg"},
+                            },
+                        ],
+                    }
+                },
+            ],
+        }
+
+        import_fhir_json(payload)
+
+        observation = Observation.objects.get()
+        self.assertEqual(observation.category, "vital")
+        self.assertEqual(
+            observation.display_value(),
+            "Systolic blood pressure: 122 mmHg; Diastolic blood pressure: 78 mmHg",
+        )
+        self.assertIn("Systolic blood pressure", str(observation))
+
     def test_imports_extended_clinical_resource_batch(self):
         payload = {
             "resourceType": "Bundle",
@@ -3221,6 +3264,13 @@ class FHIRExportTests(TestCase):
     def test_medical_summary_pdf_can_include_everything_else(self):
         patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
         Encounter.objects.create(patient=patient, status="finished")
+        Observation.objects.create(
+            patient=patient,
+            name="Heart rate",
+            category="vital",
+            value_quantity=72,
+            unit="beats/min",
+        )
 
         response = self.client.post(
             reverse("fhir_export"),
@@ -3236,6 +3286,9 @@ class FHIRExportTests(TestCase):
         self.assertIn(b"Everything Else", response.content)
         self.assertIn(b"Visits", response.content)
         self.assertIn(b"Status: finished", response.content)
+        self.assertIn(b"Vitals & Labs", response.content)
+        self.assertIn(b"Heart rate", response.content)
+        self.assertIn(b"Result: 72 beats/min", response.content)
 
     def test_medical_summary_pdf_excludes_fhir_snapshots(self):
         patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")

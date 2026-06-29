@@ -150,9 +150,7 @@ class ObservationInline(ReadOnlyPatientRecordInline):
 
     @admin.display(description="Value")
     def display_value(self, obj):
-        if obj.value_quantity is not None:
-            return f"{obj.value_quantity:g} {obj.unit}".strip()
-        return obj.value_string or "-"
+        return obj.display_value()
 
     @admin.display(description="Effective")
     def effective(self, obj):
@@ -567,9 +565,7 @@ class PatientProfileAdmin(admin.ModelAdmin):
         )
 
     def _observation_value(self, observation):
-        if observation.value_quantity is not None:
-            return f"{observation.value_quantity:g} {observation.unit}".strip()
-        return observation.value_string or "-"
+        return observation.display_value()
 
     def _display_visit_datetime(self, value):
         if not value:

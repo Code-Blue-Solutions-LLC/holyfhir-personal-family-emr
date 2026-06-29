@@ -316,15 +316,26 @@ class ObservationAdmin(admin.ModelAdmin):
         "patient",
         "name",
         "category",
-        "specimen",
-        "device",
+        "result",
+        "interpretation",
+        "reference_range",
         "effective_datetime",
     )
     list_display_links = ("name",)
-    search_fields = ("name", "loinc_code")
-    list_filter = ("patient", "category")
+    search_fields = (
+        "name",
+        "loinc_code",
+        "value_string",
+        "interpretation",
+        "reference_range",
+    )
+    list_filter = ("patient", "category", "interpretation")
     ordering = ("-effective_datetime",)
     autocomplete_fields = ["patient", "specimen", "device"]
+
+    @admin.display(description="Result")
+    def result(self, obj):
+        return obj.display_value()
 
 
 @admin.register(DiagnosticReport)

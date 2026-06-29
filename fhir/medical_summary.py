@@ -157,6 +157,9 @@ def append_resource_sections(lines, sections):
 
 
 def record_detail_pairs(record):
+    if record._meta.label_lower == "clinical.observation":
+        return observation_detail_pairs(record)
+
     details = []
     for field in record._meta.fields:
         if field.name in EXCLUDED_DETAIL_FIELDS:
@@ -166,6 +169,28 @@ def record_detail_pairs(record):
             continue
         details.append((field.verbose_name.title(), format_detail_value(value)))
     return details
+
+
+def observation_detail_pairs(observation):
+    details = [("Result", observation.display_value())]
+    if observation.get_category_display():
+        details.append(("Category", observation.get_category_display()))
+    if observation.effective_datetime:
+        details.append(
+            (
+                "Date",
+                timezone.localtime(observation.effective_datetime)
+                .strftime("%b. %d, %Y, %I:%M %p")
+                .replace(" 0", " "),
+            )
+        )
+    if observation.interpretation:
+        details.append(("Interpretation", observation.interpretation))
+    if observation.reference_range:
+        details.append(("Reference Range", observation.reference_range))
+    if observation.notes:
+        details.append(("Notes", observation.notes))
+    return [(label, value) for label, value in details if not is_empty_value(value)]
 
 
 def is_empty_value(value):

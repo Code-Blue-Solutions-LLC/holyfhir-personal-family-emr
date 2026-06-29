@@ -309,8 +309,97 @@ class Observation(models.Model):
         verbose_name = "Vitals & Lab Result"
         verbose_name_plural = "Vitals & Labs"
 
+    def display_value(self):
+        if self.value_quantity is not None:
+            value = format_observation_number(self.value_quantity)
+            return f"{value} {self.unit}".strip()
+        if self.value_string:
+            return self.value_string
+        component_summary = self.component_summary_from_snapshot()
+        if component_summary:
+            return component_summary
+        return "No value recorded"
+
+    def component_summary_from_snapshot(self):
+        try:
+            from fhir.models import FHIRLink, FHIRResourceSnapshot
+        except Exception:
+            return ""
+
+        link = (
+            FHIRLink.objects.filter(
+                django_model="Observation",
+                django_object_id=self.pk,
+                resource_type="Observation",
+            )
+            .order_by("-last_synced_at", "-pk")
+            .first()
+        )
+        if not link or not link.resource_id:
+            return ""
+        snapshot = (
+            FHIRResourceSnapshot.objects.filter(
+                resource_type="Observation",
+                resource_id=link.resource_id,
+                is_valid=True,
+            )
+            .order_by("-created_at", "-pk")
+            .first()
+        )
+        if not snapshot:
+            return ""
+        return observation_component_summary(snapshot.raw_json)
+
     def __str__(self):
+        value = self.display_value()
+        if value and value != "No value recorded":
+            return f"{self.name}: {value}"
         return self.name
+
+
+def format_observation_number(value):
+    text = str(value)
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def observation_component_summary(resource):
+    components = []
+    if not isinstance(resource, dict):
+        return ""
+    for component in resource.get("component") or []:
+        label = codeable_concept_text(component.get("code")) or "Component"
+        value = observation_value_from_resource(component)
+        if value:
+            components.append(f"{label}: {value}")
+    return "; ".join(components)
+
+
+def observation_value_from_resource(resource):
+    quantity = resource.get("valueQuantity") or {}
+    if quantity.get("value") is not None:
+        value = quantity.get("value")
+        if isinstance(value, (int, float)):
+            value = f"{value:g}"
+        unit = quantity.get("unit") or quantity.get("code") or ""
+        return f"{value} {unit}".strip()
+    if resource.get("valueString"):
+        return resource["valueString"]
+    return codeable_concept_text(resource.get("valueCodeableConcept"))
+
+
+def codeable_concept_text(value):
+    if not isinstance(value, dict):
+        return ""
+    if value.get("text"):
+        return value["text"]
+    for coding in value.get("coding") or []:
+        if coding.get("display"):
+            return coding["display"]
+        if coding.get("code"):
+            return coding["code"]
+    return ""
 
 
 class Specimen(models.Model):
