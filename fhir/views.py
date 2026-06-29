@@ -6,8 +6,14 @@ from django.urls import reverse
 
 from .backups import create_pre_import_database_backup
 from .exporter import build_fhir_export_zip, exportable_snapshot_queryset
-from .forms import FHIRExportForm, FHIRImportForm, QuickPatientCreateForm
+from .forms import (
+    FHIRExportForm,
+    FHIRImportForm,
+    MedicalSummaryPDFForm,
+    QuickPatientCreateForm,
+)
 from .importer import import_fhir_payloads
+from .medical_summary import build_patient_medical_summary_pdf
 
 
 @staff_member_required
@@ -106,18 +112,34 @@ def import_fhir_data(request):
 @staff_member_required
 def export_fhir_data(request):
     base_context = admin.site.each_context(request)
+    export_form = FHIRExportForm(initial={"latest_only": True})
+    summary_form = MedicalSummaryPDFForm()
 
-    if request.method == "POST":
-        form = FHIRExportForm(request.POST)
-        if form.is_valid():
+    if (
+        request.method == "POST"
+        and request.POST.get("action") == "download_medical_summary_pdf"
+    ):
+        summary_form = MedicalSummaryPDFForm(request.POST)
+        if summary_form.is_valid():
+            patient = summary_form.cleaned_data["patient"]
+            pdf = build_patient_medical_summary_pdf(
+                patient, summary_form.summary_options()
+            )
+            filename = f"medical-summary-patient-{patient.pk}.pdf"
+            response = HttpResponse(pdf, content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+    elif request.method == "POST":
+        export_form = FHIRExportForm(request.POST)
+        if export_form.is_valid():
             queryset = exportable_snapshot_queryset()
-            patient = form.cleaned_data.get("patient")
+            patient = export_form.cleaned_data.get("patient")
             if patient:
                 queryset = queryset.filter(patient=patient)
 
             archive = build_fhir_export_zip(
                 queryset,
-                latest_only=form.cleaned_data.get("latest_only", False),
+                latest_only=export_form.cleaned_data.get("latest_only", False),
             )
             filename = "fhir-export.zip"
             if patient:
@@ -125,8 +147,6 @@ def export_fhir_data(request):
             response = HttpResponse(archive, content_type="application/zip")
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
             return response
-    else:
-        form = FHIRExportForm(initial={"latest_only": True})
 
     return render(
         request,
@@ -134,6 +154,7 @@ def export_fhir_data(request):
         {
             **base_context,
             "title": "Export FHIR Data",
-            "form": form,
+            "form": export_form,
+            "summary_form": summary_form,
         },
     )

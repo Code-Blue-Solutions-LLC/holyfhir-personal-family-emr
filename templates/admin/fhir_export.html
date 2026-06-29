@@ -5,6 +5,63 @@
 <div class="content">
   <div class="container-fluid">
     <div class="row">
+      <div class="col-lg-8 col-12 mb-3">
+        <div class="card card-outline card-success">
+          <div class="card-header">
+            <h3 class="card-title">Download Medical Summary PDF</h3>
+          </div>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="download_medical_summary_pdf">
+            <div class="card-body">
+              <p class="text-muted">
+                Create a human-readable patient summary for sharing with a doctor, clinic, or caregiver.
+              </p>
+
+              {% if summary_form.non_field_errors %}
+                <div class="alert alert-danger">{{ summary_form.non_field_errors }}</div>
+              {% endif %}
+
+              <div class="form-group">
+                <label for="{{ summary_form.patient.id_for_label }}">{{ summary_form.patient.label }}</label>
+                {{ summary_form.patient }}
+                {% if summary_form.patient.help_text %}<small class="form-text text-muted">{{ summary_form.patient.help_text }}</small>{% endif %}
+                {{ summary_form.patient.errors }}
+              </div>
+
+              <div class="form-group mb-0">
+                <label>Summary sections</label>
+                <div class="border rounded p-3 bg-light">
+                  <div class="form-check">
+                    {{ summary_form.include_allergies }}
+                    <label class="form-check-label" for="{{ summary_form.include_allergies.id_for_label }}">{{ summary_form.include_allergies.label }}</label>
+                  </div>
+                  <div class="form-check">
+                    {{ summary_form.include_medications }}
+                    <label class="form-check-label" for="{{ summary_form.include_medications.id_for_label }}">{{ summary_form.include_medications.label }}</label>
+                  </div>
+                  <div class="form-check">
+                    {{ summary_form.include_conditions }}
+                    <label class="form-check-label" for="{{ summary_form.include_conditions.id_for_label }}">{{ summary_form.include_conditions.label }}</label>
+                  </div>
+                  <div class="form-check mt-2 pt-2 border-top">
+                    {{ summary_form.include_everything_else }}
+                    <label class="form-check-label" for="{{ summary_form.include_everything_else.id_for_label }}">{{ summary_form.include_everything_else.label }}</label>
+                    {% if summary_form.include_everything_else.help_text %}<small class="form-text text-muted">{{ summary_form.include_everything_else.help_text }}</small>{% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer d-flex justify-content-end">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-file-pdf mr-1"></i>
+                Download PDF
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div class="col-lg-8 col-12">
         <div class="card card-outline card-info">
           <div class="card-header">
@@ -12,6 +69,7 @@
           </div>
           <form method="post" novalidate>
             {% csrf_token %}
+            <input type="hidden" name="action" value="export_fhir_zip">
             <div class="card-body">
               <p class="text-muted">
                 Download valid saved FHIR snapshots as a ZIP file with one NDJSON file per resource type.

@@ -16,6 +16,7 @@ from django.urls import reverse
 
 from clinical.models import (
     AdverseEvent,
+    Allergy,
     TerminologyCapabilities,
     StructureMap,
     StructureDefinition,
@@ -3166,3 +3167,72 @@ class FHIRExportTests(TestCase):
             )
         exported_ids = {json.loads(line)["id"] for line in lines}
         self.assertEqual(exported_ids, {"obs-included"})
+
+    def test_export_page_includes_medical_summary_panel(self):
+        response = self.client.get(reverse("fhir_export"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Download Medical Summary PDF")
+        self.assertContains(response, "Export FHIR Data")
+
+    def test_downloads_medical_summary_pdf_for_patient(self):
+        patient = PatientProfile.objects.create(
+            first_name="Maya",
+            last_name="Rivera",
+            date_of_birth=date(1980, 4, 12),
+        )
+        Condition.objects.create(
+            patient=patient, name="Asthma", clinical_status="active"
+        )
+        Allergy.objects.create(patient=patient, substance="Peanuts", reaction="Hives")
+        Medication.objects.create(
+            patient=patient, name="Albuterol", dosage_text="2 puffs as needed"
+        )
+        Encounter.objects.create(patient=patient, status="finished")
+
+        response = self.client.post(
+            reverse("fhir_export"),
+            {
+                "action": "download_medical_summary_pdf",
+                "patient": patient.pk,
+                "include_allergies": "on",
+                "include_medications": "on",
+                "include_conditions": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF-1.4"))
+        self.assertIn(
+            f"medical-summary-patient-{patient.pk}.pdf",
+            response["Content-Disposition"],
+        )
+        self.assertIn(b"Medical Summary", response.content)
+        self.assertIn(b"Conditions", response.content)
+        self.assertIn(b"Asthma", response.content)
+        self.assertIn(b"Clinical Status: active", response.content)
+        self.assertIn(b"Allergies", response.content)
+        self.assertIn(b"Peanuts", response.content)
+        self.assertIn(b"Medications", response.content)
+        self.assertIn(b"Albuterol", response.content)
+        self.assertNotIn(b"Visits", response.content)
+
+    def test_medical_summary_pdf_can_include_everything_else(self):
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+        Encounter.objects.create(patient=patient, status="finished")
+
+        response = self.client.post(
+            reverse("fhir_export"),
+            {
+                "action": "download_medical_summary_pdf",
+                "patient": patient.pk,
+                "include_conditions": "on",
+                "include_everything_else": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Everything Else", response.content)
+        self.assertIn(b"Visits", response.content)
+        self.assertIn(b"Status: finished", response.content)

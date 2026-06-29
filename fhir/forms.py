@@ -131,6 +131,48 @@ class FHIRExportForm(forms.Form):
     )
 
 
+class MedicalSummaryPDFForm(forms.Form):
+    patient = forms.ModelChoiceField(
+        label="Patient",
+        queryset=PatientProfile.objects.order_by("last_name", "first_name", "id"),
+        required=True,
+        empty_label="Select a Patient",
+        widget=forms.Select(attrs={"class": "form-select"}),
+        help_text="Choose the patient whose human-readable medical summary should be downloaded.",
+    )
+    include_allergies = forms.BooleanField(
+        label="Allergies",
+        required=False,
+        initial=True,
+    )
+    include_medications = forms.BooleanField(
+        label="Medications",
+        required=False,
+        initial=True,
+    )
+    include_conditions = forms.BooleanField(
+        label="Conditions",
+        required=False,
+        initial=True,
+    )
+    include_everything_else = forms.BooleanField(
+        label="Everything else",
+        required=False,
+        initial=False,
+        help_text="Adds the rest of the patient-linked resources. This can make a long PDF.",
+    )
+
+    def summary_options(self):
+        return {
+            "include_allergies": self.cleaned_data.get("include_allergies", False),
+            "include_medications": self.cleaned_data.get("include_medications", False),
+            "include_conditions": self.cleaned_data.get("include_conditions", False),
+            "include_everything_else": self.cleaned_data.get(
+                "include_everything_else", False
+            ),
+        }
+
+
 class QuickPatientCreateForm(forms.ModelForm):
     class Meta:
         model = PatientProfile
