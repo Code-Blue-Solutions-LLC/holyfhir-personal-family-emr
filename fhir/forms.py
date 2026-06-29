@@ -114,6 +114,23 @@ class FHIRImportForm(forms.Form):
         return payloads
 
 
+class FHIRExportForm(forms.Form):
+    patient = forms.ModelChoiceField(
+        label="Patient",
+        queryset=PatientProfile.objects.order_by("last_name", "first_name", "id"),
+        required=False,
+        empty_label="All patients and shared records",
+        widget=forms.Select(attrs={"class": "form-select"}),
+        help_text="Choose one patient, or leave this blank to export every valid FHIR snapshot.",
+    )
+    latest_only = forms.BooleanField(
+        label="Only export the latest copy of each resource",
+        required=False,
+        initial=True,
+        help_text="Recommended. This avoids duplicate copies from repeated imports.",
+    )
+
+
 class QuickPatientCreateForm(forms.ModelForm):
     class Meta:
         model = PatientProfile

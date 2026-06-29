@@ -1827,6 +1827,12 @@ def fhir_interop_hub(request):
             "icon": "fas fa-database",
         },
         {
+            "title": "FHIR Export",
+            "description": "Download saved FHIR snapshots as NDJSON files grouped by resource type.",
+            "url": reverse("fhir_export"),
+            "icon": "fas fa-file-export",
+        },
+        {
             "title": "FHIR Explorer",
             "description": "Browse all 143+ FHIR resources, profiles, and definitions across the system.",
             "url": reverse("fhir_explorer"),

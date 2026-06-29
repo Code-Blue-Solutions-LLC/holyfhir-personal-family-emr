@@ -35,7 +35,7 @@ from config.admin_views import (
     settings_hub,
 )
 from clinical.views import observation_charts
-from fhir.views import import_fhir_data
+from fhir.views import export_fhir_data, import_fhir_data
 from patients.views import (
     first_run_setup,
     recovery_key_reset_confirm,
@@ -122,6 +122,7 @@ urlpatterns = [
         name="fhir_interop_hub",
     ),
     path("admin/fhir/import/", import_fhir_data, name="fhir_import"),
+    path("admin/fhir/export/", export_fhir_data, name="fhir_export"),
     path("admin/", admin.site.urls),
 ]
 

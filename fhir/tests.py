@@ -3080,3 +3080,89 @@ class FHIRImportTests(TestCase):
         self.assertTrue(
             any("database backup failed" in message for message in messages)
         )
+
+
+class FHIRExportTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(
+            username="owner",
+            email="owner@example.test",
+            password="correct-password",
+        )
+        self.client.force_login(self.user)
+
+    def create_snapshot(
+        self, resource, patient=None, is_valid=True, import_status=None
+    ):
+        return FHIRResourceSnapshot.objects.create(
+            patient=patient,
+            resource_type=resource["resourceType"],
+            resource_id=resource.get("id", ""),
+            raw_json=resource,
+            source="imported",
+            is_valid=is_valid,
+            import_status=import_status or FHIRResourceSnapshot.IMPORT_STATUS_IMPORTED,
+        )
+
+    def test_export_downloads_latest_valid_snapshots_as_zip(self):
+        patient = PatientProfile.objects.create(first_name="Maya", last_name="Rivera")
+        self.create_snapshot(
+            {"resourceType": "Patient", "id": "pat-1", "active": False},
+            patient=patient,
+        )
+        self.create_snapshot(
+            {"resourceType": "Patient", "id": "pat-1", "active": True},
+            patient=patient,
+        )
+        self.create_snapshot(
+            {"resourceType": "Observation", "id": "obs-1", "status": "final"},
+            patient=patient,
+        )
+        self.create_snapshot(
+            {"resourceType": "Condition", "id": "bad-1"},
+            patient=patient,
+            is_valid=False,
+            import_status=FHIRResourceSnapshot.IMPORT_STATUS_INVALID,
+        )
+
+        response = self.client.post(reverse("fhir_export"), {"latest_only": "on"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/zip")
+        with ZipFile(BytesIO(response.content)) as archive:
+            self.assertIn("manifest.json", archive.namelist())
+            self.assertIn("FHIR/Patient.ndjson", archive.namelist())
+            self.assertIn("FHIR/Observation.ndjson", archive.namelist())
+            self.assertNotIn("FHIR/Condition.ndjson", archive.namelist())
+            patient_lines = (
+                archive.read("FHIR/Patient.ndjson").decode().strip().splitlines()
+            )
+            self.assertEqual(len(patient_lines), 1)
+            exported_patient = json.loads(patient_lines[0])
+            self.assertTrue(exported_patient["active"])
+
+    def test_export_can_filter_to_one_patient(self):
+        included = PatientProfile.objects.create(first_name="Ada", last_name="Lovelace")
+        excluded = PatientProfile.objects.create(first_name="Grace", last_name="Hopper")
+        self.create_snapshot(
+            {"resourceType": "Observation", "id": "obs-included"},
+            patient=included,
+        )
+        self.create_snapshot(
+            {"resourceType": "Observation", "id": "obs-excluded"},
+            patient=excluded,
+        )
+
+        response = self.client.post(
+            reverse("fhir_export"),
+            {"patient": included.pk, "latest_only": "on"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with ZipFile(BytesIO(response.content)) as archive:
+            lines = (
+                archive.read("FHIR/Observation.ndjson").decode().strip().splitlines()
+            )
+        exported_ids = {json.loads(line)["id"] for line in lines}
+        self.assertEqual(exported_ids, {"obs-included"})

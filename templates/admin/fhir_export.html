@@ -1,0 +1,56 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-lg-8 col-12">
+        <div class="card card-outline card-info">
+          <div class="card-header">
+            <h3 class="card-title">Export FHIR Data</h3>
+          </div>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="card-body">
+              <p class="text-muted">
+                Download valid saved FHIR snapshots as a ZIP file with one NDJSON file per resource type.
+              </p>
+
+              <div class="alert alert-warning">
+                <strong>Important:</strong>
+                This export uses saved FHIR snapshots from imports. Changes made later in local admin fields, and local records created without a FHIR snapshot, may not be included yet. Fresh Django model to FHIR serialization still needs to be added.
+              </div>
+
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              {% endif %}
+
+              <div class="form-group">
+                <label for="{{ form.patient.id_for_label }}">{{ form.patient.label }}</label>
+                {{ form.patient }}
+                {% if form.patient.help_text %}<small class="form-text text-muted">{{ form.patient.help_text }}</small>{% endif %}
+                {{ form.patient.errors }}
+              </div>
+
+              <div class="form-group form-check">
+                {{ form.latest_only }}
+                <label class="form-check-label" for="{{ form.latest_only.id_for_label }}">{{ form.latest_only.label }}</label>
+                {% if form.latest_only.help_text %}<small class="form-text text-muted">{{ form.latest_only.help_text }}</small>{% endif %}
+                {{ form.latest_only.errors }}
+              </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+              <a href="{% url 'fhir_interop_hub' %}" class="btn btn-outline-secondary">Back to FHIR / Interop</a>
+              <button type="submit" class="btn btn-info">
+                <i class="fas fa-file-export mr-1"></i>
+                Export ZIP
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

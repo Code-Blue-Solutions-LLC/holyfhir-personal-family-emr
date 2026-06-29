@@ -331,6 +331,12 @@ JAZZMIN_SETTINGS = {
                 "permissions": ["fhir.add_fhirresourcesnapshot"],
             },
             {
+                "name": "Export Data",
+                "url": "fhir_export",
+                "icon": "fas fa-file-export",
+                "permissions": ["fhir.view_fhirresourcesnapshot"],
+            },
+            {
                 "name": "FHIR Explorer",
                 "url": "fhir_explorer",
                 "icon": "fas fa-search",

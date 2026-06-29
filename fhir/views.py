@@ -1,10 +1,12 @@
 from django.contrib import admin, messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .backups import create_pre_import_database_backup
-from .forms import FHIRImportForm, QuickPatientCreateForm
+from .exporter import build_fhir_export_zip, exportable_snapshot_queryset
+from .forms import FHIRExportForm, FHIRImportForm, QuickPatientCreateForm
 from .importer import import_fhir_payloads
 
 
@@ -97,5 +99,41 @@ def import_fhir_data(request):
             "can_add_patient": can_add_patient,
             "patient_add_url": reverse("admin:patients_patientprofile_add"),
             "show_patient_modal": False,
+        },
+    )
+
+
+@staff_member_required
+def export_fhir_data(request):
+    base_context = admin.site.each_context(request)
+
+    if request.method == "POST":
+        form = FHIRExportForm(request.POST)
+        if form.is_valid():
+            queryset = exportable_snapshot_queryset()
+            patient = form.cleaned_data.get("patient")
+            if patient:
+                queryset = queryset.filter(patient=patient)
+
+            archive = build_fhir_export_zip(
+                queryset,
+                latest_only=form.cleaned_data.get("latest_only", False),
+            )
+            filename = "fhir-export.zip"
+            if patient:
+                filename = f"fhir-export-patient-{patient.pk}.zip"
+            response = HttpResponse(archive, content_type="application/zip")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+    else:
+        form = FHIRExportForm(initial={"latest_only": True})
+
+    return render(
+        request,
+        "admin/fhir_export.html",
+        {
+            **base_context,
+            "title": "Export FHIR Data",
+            "form": form,
         },
     )
