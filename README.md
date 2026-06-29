@@ -23,7 +23,7 @@ This project is the beginning of a journey to improved patient privacy, and new 
 
 ## Latest Release
 
-Download the latest Windows installer from the [GitHub Releases page](https://github.com/michaelbdavidson7/personal-emr/releases/latest).
+Download the latest Windows installer from the [GitHub Releases page](https://github.com/Code-Blue-Solutions-LLC/personal-emr/releases/latest).
 
 ## A Friendly Warning
 
@@ -53,7 +53,7 @@ This software is provided as-is, without warranty of any kind.
 
 If someone sent you a HolyFHIR installer:
 
-1. Download the Windows setup `.exe` from the [latest release](https://github.com/michaelbdavidson7/personal-emr/releases/latest).
+1. Download the Windows setup `.exe` from the [latest release](https://github.com/Code-Blue-Solutions-LLC/personal-emr/releases/latest).
 2. Run the installer.
 3. Open **HolyFHIR Personal EMR**.
 4. Create your first system user.
@@ -165,7 +165,7 @@ These steps are for people working on the code.
 ### 1. Clone
 
 ```powershell
-git clone https://github.com/michaelbdavidson7/holyfhir-personal-family-emr.git
+git clone https://github.com/Code-Blue-Solutions-LLC/holyfhir-personal-family-emr.git
 cd holyfhir-personal-family-emr
 ```
 
