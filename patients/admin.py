@@ -66,6 +66,7 @@ class ReadOnlyPatientRecordInline(admin.TabularInline):
 
 class ConditionInline(ReadOnlyPatientRecordInline):
     model = Condition
+    ordering = ("-onset_date", "-updated_at", "-id")
     fields = (
         "name",
         "clinical_status",
@@ -88,6 +89,7 @@ class ConditionInline(ReadOnlyPatientRecordInline):
 
 class AllergyInline(ReadOnlyPatientRecordInline):
     model = Allergy
+    ordering = ("-updated_at", "-id")
     fields = (
         "substance",
         "category",
@@ -101,6 +103,7 @@ class AllergyInline(ReadOnlyPatientRecordInline):
 
 class MedicationInline(ReadOnlyPatientRecordInline):
     model = Medication
+    ordering = ("-start_date", "-updated_at", "-id")
     fields = (
         "name",
         "status",
@@ -123,6 +126,7 @@ class MedicationInline(ReadOnlyPatientRecordInline):
 
 class ImmunizationInline(ReadOnlyPatientRecordInline):
     model = Immunization
+    ordering = ("-occurrence_date", "-updated_at", "-id")
     fields = (
         "vaccine_name",
         "occurrence",
@@ -139,6 +143,7 @@ class ImmunizationInline(ReadOnlyPatientRecordInline):
 
 class ObservationInline(ReadOnlyPatientRecordInline):
     model = Observation
+    ordering = ("-effective_datetime", "-updated_at", "-id")
     fields = (
         "name",
         "category",
@@ -159,6 +164,7 @@ class ObservationInline(ReadOnlyPatientRecordInline):
 
 class EncounterInline(ReadOnlyPatientRecordInline):
     model = Encounter
+    ordering = ("-start_time", "-updated_at", "-id")
     fields = (
         "encounter_type",
         "status",
@@ -176,6 +182,7 @@ class EncounterInline(ReadOnlyPatientRecordInline):
 
 class CareTeamInline(ReadOnlyPatientRecordInline):
     model = CareTeam
+    ordering = ("-start_date", "-updated_at", "-id")
     fields = (
         "name",
         "status",
@@ -197,6 +204,7 @@ class CareTeamInline(ReadOnlyPatientRecordInline):
 
 class ClinicalDocumentInline(ReadOnlyPatientRecordInline):
     model = ClinicalDocument
+    ordering = ("-source_date", "-updated_at", "-id")
     fields = (
         "title",
         "document_type",
@@ -392,7 +400,7 @@ class PatientProfileAdmin(admin.ModelAdmin):
         if not obj or not obj.pk:
             return "Save this patient before reviewing related people."
 
-        related_people = obj.related_people.order_by("name", "relationship", "id")[:8]
+        related_people = obj.related_people.order_by("-updated_at", "-id")[:8]
         add_url = reverse("admin:clinical_relatedperson_add")
         if not related_people:
             return format_html(
