@@ -1,9 +1,16 @@
 from django.contrib import admin
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
+from config.credential_storage import (
+    CredentialStorageError,
+    credential_storage_mode,
+    get_configured_secret,
+)
+from config.recovery_kit import render_recovery_kit
 from .fhir_explorer_registry import build_fhir_explorer_sections
 from .personal_emr_resource_registry_alphabetized import (
     build_personal_emr_resource_sections,
@@ -182,10 +189,16 @@ def settings_hub(request):
             "icon": "fas fa-users",
         },
         {
-            "title": "Recovery Keys",
-            "description": "View recovery-key status and stored hashes.",
-            "url": reverse("admin:patients_recoverycredential_changelist"),
-            "icon": "fas fa-key",
+            "title": "Password Recovery",
+            "description": "Create or rotate the key used to reset your owner password.",
+            "url": reverse("admin_recovery_key_generate"),
+            "icon": "fas fa-user-lock",
+        },
+        {
+            "title": "Recovery Kit",
+            "description": "Save the database Recovery Kit needed when moving HolyFHIR or restoring backups.",
+            "url": reverse("admin_recovery_kit"),
+            "icon": "fas fa-file-medical-alt",
         },
         {
             "title": "Backups",
@@ -214,6 +227,44 @@ def backups_hub(request):
         "backups": list_fhir_import_database_backups(),
     }
     return render(request, "admin/backups_hub.html", context)
+
+
+def recovery_kit(request):
+    if not request.user.is_authenticated:
+        return redirect("admin:login")
+
+    try:
+        database_key = get_configured_secret("DATABASE_ENCRYPTION_KEY")
+    except CredentialStorageError as error:
+        database_key = ""
+        messages.error(request, str(error))
+
+    storage_mode = credential_storage_mode()
+
+    if request.method == "POST":
+        if not database_key:
+            messages.error(
+                request,
+                "HolyFHIR could not find the database key needed to create a Recovery Kit.",
+            )
+            return redirect("admin_recovery_kit")
+
+        response = HttpResponse(
+            render_recovery_kit(database_key),
+            content_type="text/plain; charset=utf-8",
+        )
+        response["Content-Disposition"] = (
+            'attachment; filename="HolyFHIR-Recovery-Kit.txt"'
+        )
+        return response
+
+    context = {
+        **admin.site.each_context(request),
+        "title": "HolyFHIR Recovery Kit",
+        "has_database_key": bool(database_key),
+        "credential_storage": storage_mode,
+    }
+    return render(request, "admin/recovery_kit.html", context)
 
 
 def recovery_key_generate(request):

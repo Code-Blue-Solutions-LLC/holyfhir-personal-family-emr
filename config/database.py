@@ -45,9 +45,12 @@ def build_default_database_config(base_dir: Path):
         encryption_key = get_configured_secret("DATABASE_ENCRYPTION_KEY")
     except CredentialStorageError as error:
         raise ImproperlyConfigured(str(error)) from error
-    is_bootstrap_command = len(sys.argv) > 1 and sys.argv[1] == "bootstrap_secrets"
+    is_pre_database_command = len(sys.argv) > 1 and sys.argv[1] in {
+        "bootstrap_secrets",
+        "import_recovery_kit",
+    }
 
-    if not encryption_key and not is_bootstrap_command:
+    if not encryption_key and not is_pre_database_command:
         raise ImproperlyConfigured(
             "A database encryption key is required. Open HolyFHIR from the desktop app or run bootstrap_secrets to set up local secure storage."
         )

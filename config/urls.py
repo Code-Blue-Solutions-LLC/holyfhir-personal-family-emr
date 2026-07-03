@@ -32,6 +32,7 @@ from config.admin_views import (
     fhir_interop_hub,
     patient_resources_directory,
     recovery_key_generate,
+    recovery_kit,
     settings_hub,
 )
 from clinical.views import observation_charts
@@ -85,6 +86,11 @@ urlpatterns = [
         "admin/settings/recovery-key/",
         admin.site.admin_view(recovery_key_generate),
         name="admin_recovery_key_generate",
+    ),
+    path(
+        "admin/settings/recovery-kit/",
+        admin.site.admin_view(recovery_kit),
+        name="admin_recovery_kit",
     ),
     path(
         "admin/clinical/observations/charts/",

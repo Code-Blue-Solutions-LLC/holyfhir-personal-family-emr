@@ -18,6 +18,7 @@ from config.credential_storage import (
 from config.database import DEFAULT_DATABASE_NAME
 from config.env import parse_env_file
 from config.file_backups import backup_existing_file
+from config.recovery_kit import render_recovery_kit
 
 
 SECRET_KEYS = {"DATABASE_ENCRYPTION_KEY", "SECRET_KEY"}
@@ -60,6 +61,10 @@ class Command(BaseCommand):
                 "Generate new secrets even when usable values already exist. "
                 "This can make an existing encrypted database unreadable."
             ),
+        )
+        parser.add_argument(
+            "--recovery-kit-file",
+            help="Optional path where a HolyFHIR Recovery Kit should be saved.",
         )
         parser.add_argument(
             "--yes",
@@ -114,9 +119,16 @@ class Command(BaseCommand):
                 merged_values, generated_secrets, options["rotate"]
             )
 
+        recovery_database_key = self._recovery_database_key(
+            merged_values, available_secrets, generated_secrets, options["rotate"]
+        )
+
         env_path.parent.mkdir(parents=True, exist_ok=True)
         backup_path = backup_existing_file(env_path)
         self._write_env_file(env_path, example_path, example_values, merged_values)
+        recovery_kit_path = self._write_recovery_kit(
+            base_dir, options.get("recovery_kit_file"), recovery_database_key
+        )
 
         if credential_storage == CREDENTIAL_STORAGE_FILE:
             for key in SECRET_KEYS:
@@ -130,6 +142,12 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(self._success_message(credential_storage, env_path))
         )
+        if recovery_kit_path:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Saved HolyFHIR Recovery Kit to {recovery_kit_path}"
+                )
+            )
         if options["rotate"]:
             self.stdout.write(
                 self.style.WARNING(
@@ -161,6 +179,28 @@ class Command(BaseCommand):
                 raise CommandError(str(error)) from error
 
         return available
+
+    def _recovery_database_key(
+        self, values, available_secrets, generated_secrets, rotate
+    ):
+        if rotate:
+            return generated_secrets["DATABASE_ENCRYPTION_KEY"]
+        return (
+            available_secrets.get("DATABASE_ENCRYPTION_KEY")
+            or values.get("DATABASE_ENCRYPTION_KEY")
+            or generated_secrets["DATABASE_ENCRYPTION_KEY"]
+        )
+
+    def _write_recovery_kit(self, base_dir, recovery_kit_file, database_key):
+        if not recovery_kit_file:
+            return None
+
+        recovery_kit_path = self._resolve_path(base_dir, recovery_kit_file)
+        recovery_kit_path.parent.mkdir(parents=True, exist_ok=True)
+        recovery_kit_path.write_text(
+            render_recovery_kit(database_key), encoding="utf-8"
+        )
+        return recovery_kit_path
 
     def _store_system_credentials(
         self, values, available_secrets, generated_secrets, rotate

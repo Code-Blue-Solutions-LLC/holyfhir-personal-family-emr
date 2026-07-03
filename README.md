@@ -135,6 +135,23 @@ The chart page lets you:
 
 Only numeric measurements can be charted. Text-only notes are intentionally skipped.
 
+## HolyFHIR Recovery Kit
+
+HolyFHIR encrypts the local database with a database key. New desktop installs can store that key in this computer's secure storage, while developer and fallback setups can store it in `.env`.
+
+Create a Recovery Kit and save it somewhere safe:
+
+```powershell
+python manage.py export_recovery_kit --output HolyFHIR-Recovery-Kit.txt
+```
+
+If you restore a database backup or move HolyFHIR to another computer and the database key is missing, restore the key from the Recovery Kit:
+
+```powershell
+python manage.py import_recovery_kit --recovery-kit-file HolyFHIR-Recovery-Kit.txt --credential-storage system
+```
+
+Use `--credential-storage file` only when you intentionally want the database key stored in `.env`.
 ## Passwords And Recovery Keys
 
 HolyFHIR is designed for local use. That means there is no cloud account where someone can reset your password for you.

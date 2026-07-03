@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -23,6 +25,25 @@ class SettingsBackupPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Backups")
         self.assertContains(response, reverse("admin_backups"))
+        self.assertContains(response, "Recovery Kit")
+        self.assertContains(response, reverse("admin_recovery_kit"))
+
+    def test_recovery_kit_page_renders_download_action(self):
+        with patch("config.admin_views.get_configured_secret", return_value="db-key"):
+            response = self.client.get(reverse("admin_recovery_kit"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "HolyFHIR Recovery Kit")
+        self.assertContains(response, "Download Recovery Kit")
+
+    def test_recovery_kit_download_returns_text_attachment(self):
+        with patch("config.admin_views.get_configured_secret", return_value="db-key"):
+            response = self.client.post(reverse("admin_recovery_kit"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/plain; charset=utf-8")
+        self.assertIn("HolyFHIR-Recovery-Kit.txt", response["Content-Disposition"])
+        self.assertContains(response, "Database Recovery Key: db-key")
 
     def test_backups_page_renders_manual_restore_explainer(self):
         response = self.client.get(reverse("admin_backups"))

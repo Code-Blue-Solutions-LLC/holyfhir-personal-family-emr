@@ -20,6 +20,7 @@ from config.database import (
 from config.auth_forms import RateLimitedAdminAuthenticationForm, _lockout_key
 from config.db.backends.sqlcipher.base import _is_plaintext_sqlite_database
 from config.env import load_env, parse_env_file
+from config.recovery_kit import parse_recovery_kit, render_recovery_kit
 from patients.models import LoginLockout
 from patients.forms import RecoveryKeyPasswordResetForm
 from patients.models import PatientProfile, RecoveryCredential
@@ -267,6 +268,27 @@ class BootstrapSecretsCommandTests(SimpleTestCase):
             "django-insecure-development-only-change-me",
         )
 
+    def test_bootstrap_secrets_can_write_recovery_kit_file(self):
+        with TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            env_path = base_dir / ".env"
+            recovery_kit_path = base_dir / "HolyFHIR-Recovery-Kit.txt"
+
+            with patch.dict("os.environ", {}, clear=True):
+                call_command(
+                    "bootstrap_secrets",
+                    env_file=str(env_path),
+                    recovery_kit_file=str(recovery_kit_path),
+                    yes=True,
+                )
+
+            values = parse_env_file(env_path)
+            recovery_kit_key = parse_recovery_kit(
+                recovery_kit_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(recovery_kit_key, values["DATABASE_ENCRYPTION_KEY"])
+
     def test_bootstrap_secrets_preserves_existing_secrets(self):
         with TemporaryDirectory() as temp_dir:
             base_dir = Path(temp_dir)
@@ -352,6 +374,125 @@ class BootstrapSecretsCommandTests(SimpleTestCase):
 
         self.assertNotEqual(values["DATABASE_ENCRYPTION_KEY"], "existing-db-key")
         self.assertNotEqual(values["SECRET_KEY"], "existing-secret-key")
+
+
+class RecoveryKitCommandTests(SimpleTestCase):
+    def test_recovery_kit_round_trips_database_key(self):
+        recovery_kit = render_recovery_kit("database-key-123")
+
+        self.assertEqual(parse_recovery_kit(recovery_kit), "database-key-123")
+        self.assertEqual(parse_recovery_kit("database-key-123"), "database-key-123")
+
+    def test_export_recovery_kit_writes_current_database_key(self):
+        with TemporaryDirectory() as temp_dir:
+            recovery_kit_path = Path(temp_dir) / "HolyFHIR-Recovery-Kit.txt"
+
+            with patch.dict(
+                "os.environ", {"DATABASE_ENCRYPTION_KEY": "export-key"}, clear=True
+            ):
+                call_command("export_recovery_kit", output=str(recovery_kit_path))
+
+            recovery_kit_key = parse_recovery_kit(
+                recovery_kit_path.read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(recovery_kit_key, "export-key")
+
+    def test_import_recovery_kit_can_store_key_in_file_storage(self):
+        with TemporaryDirectory() as temp_dir:
+            env_path = Path(temp_dir) / ".env"
+
+            with patch.dict("os.environ", {}, clear=True):
+                call_command(
+                    "import_recovery_kit",
+                    recovery_key="restored-db-key",
+                    env_file=str(env_path),
+                    credential_storage="file",
+                    skip_database_check=True,
+                )
+
+            values = parse_env_file(env_path)
+
+        self.assertEqual(values["DATABASE_CREDENTIAL_STORAGE"], "file")
+        self.assertEqual(values["DATABASE_ENCRYPTION_KEY"], "restored-db-key")
+        self.assertNotEqual(
+            values["SECRET_KEY"], "django-insecure-development-only-change-me"
+        )
+
+    def test_import_recovery_kit_can_store_key_in_system_storage(self):
+        stored_credentials = {}
+
+        def fake_set_system_credential(key, value):
+            stored_credentials[key] = value
+
+        with TemporaryDirectory() as temp_dir:
+            recovery_kit_path = Path(temp_dir) / "HolyFHIR-Recovery-Kit.txt"
+            env_path = Path(temp_dir) / ".env"
+            recovery_kit_path.write_text(
+                render_recovery_kit("system-restored-db-key"), encoding="utf-8"
+            )
+
+            with (
+                patch.dict("os.environ", {}, clear=True),
+                patch(
+                    "patients.management.commands.import_recovery_kit.set_system_credential",
+                    side_effect=fake_set_system_credential,
+                ),
+            ):
+                call_command(
+                    "import_recovery_kit",
+                    recovery_kit_file=str(recovery_kit_path),
+                    env_file=str(env_path),
+                    credential_storage="system",
+                    skip_database_check=True,
+                )
+
+            values = parse_env_file(env_path)
+
+        self.assertEqual(values["DATABASE_CREDENTIAL_STORAGE"], "system")
+        self.assertEqual(values["DATABASE_ENCRYPTION_KEY"], "")
+        self.assertEqual(values["SECRET_KEY"], "")
+        self.assertEqual(
+            stored_credentials["DATABASE_ENCRYPTION_KEY"], "system-restored-db-key"
+        )
+        self.assertIn("SECRET_KEY", stored_credentials)
+
+    def test_import_recovery_kit_rejects_invalid_recovery_kit_text(self):
+        with TemporaryDirectory() as temp_dir:
+            env_path = Path(temp_dir) / ".env"
+
+            with self.assertRaises(CommandError):
+                call_command(
+                    "import_recovery_kit",
+                    recovery_key="Label: no usable key here",
+                    env_file=str(env_path),
+                    credential_storage="file",
+                    skip_database_check=True,
+                )
+
+    def test_import_recovery_kit_validates_existing_database_when_present(self):
+        with TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            database_path = base_dir / "existing.sqlite3"
+            env_path = base_dir / ".env"
+            database_path.write_bytes(b"encrypted-placeholder")
+            env_path.write_text(
+                "DATABASE_NAME=" + str(database_path) + "\n",
+                encoding="utf-8",
+            )
+
+            with patch(
+                "patients.management.commands.import_recovery_kit.validate_database_key",
+                return_value=True,
+            ) as validate_database_key:
+                call_command(
+                    "import_recovery_kit",
+                    recovery_key="validated-key",
+                    env_file=str(env_path),
+                    credential_storage="file",
+                )
+
+        validate_database_key.assert_called_once()
 
 
 class LoginRateLimitTests(TestCase):
