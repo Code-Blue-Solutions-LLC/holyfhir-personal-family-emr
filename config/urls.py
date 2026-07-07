@@ -18,7 +18,6 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import path, re_path
 from config import admin_views
@@ -41,6 +40,7 @@ from patients.views import (
     recovery_key_reset_confirm,
     recovery_key_reset_start,
 )
+from system_settings.themes import DEFAULT_THEME, theme_assets
 from system_settings.views import lock_app, unlock_app
 
 admin.site.login_form = RateLimitedAdminAuthenticationForm
@@ -51,7 +51,13 @@ def admin_root_redirect(request):
 
 
 def favicon(request):
-    return HttpResponse(status=204)
+    try:
+        from system_settings.models import SystemSettings
+
+        app_theme = SystemSettings.get_solo().app_theme
+    except Exception:
+        app_theme = DEFAULT_THEME
+    return redirect(theme_assets(app_theme)["favicon_url"])
 
 
 def unknown_path_redirect(request, unmatched_path=None):

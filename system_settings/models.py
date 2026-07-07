@@ -4,6 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from .themes import DEFAULT_THEME, THEME_CHOICES, normalize_theme_key
+
 
 def default_time_zone():
     return getattr(settings, "TIME_ZONE", "America/New_York")
@@ -17,6 +19,12 @@ class SystemSettings(models.Model):
         max_length=64,
         default=default_time_zone,
         help_text="Used to display exact times, such as encounters, observations, and imports.",
+    )
+    app_theme = models.CharField(
+        max_length=32,
+        choices=THEME_CHOICES,
+        default=DEFAULT_THEME,
+        help_text="Controls HolyFHIR branding assets such as the logo and favicon.",
     )
     app_lock_enabled = models.BooleanField(
         "Require sign-in and enable lock screen",
@@ -46,6 +54,7 @@ class SystemSettings(models.Model):
 
     def clean(self):
         super().clean()
+        self.app_theme = normalize_theme_key(self.app_theme)
         try:
             ZoneInfo(self.time_zone)
         except ZoneInfoNotFoundError as exc:

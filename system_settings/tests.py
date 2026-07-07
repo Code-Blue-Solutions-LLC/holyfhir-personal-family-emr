@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from .env_sync import update_env_value
 from .models import SystemSettings
+from .themes import DEFAULT_THEME, theme_assets
 
 
 class AppLockTests(TestCase):
@@ -103,6 +104,24 @@ class SystemSettingsTests(TestCase):
         self.assertFalse(settings.app_lock_enabled)
         self.assertFalse(settings.lock_shortcut_enabled)
         self.assertFalse(settings.login_lockout_enabled)
+
+    def test_default_theme_is_regular(self):
+        settings = SystemSettings.get_solo()
+
+        self.assertEqual(settings.app_theme, DEFAULT_THEME)
+        self.assertEqual(settings.app_theme, "regular")
+
+    def test_unknown_theme_asset_lookup_falls_back_to_regular(self):
+        assets = theme_assets("missing")
+
+        self.assertEqual(assets["key"], "regular")
+
+    def test_theme_assets_returns_static_urls(self):
+        assets = theme_assets("regular")
+
+        self.assertEqual(assets["key"], "regular")
+        self.assertIn("system_settings/themes/regular/", assets["logo_url"])
+        self.assertIn("system_settings/themes/regular/", assets["favicon_url"])
 
     def test_invalid_time_zone_is_rejected(self):
         settings = SystemSettings(time_zone="Not/A_Timezone")

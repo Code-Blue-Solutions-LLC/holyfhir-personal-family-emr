@@ -6,10 +6,16 @@ from django.utils import timezone
 
 from .env_sync import update_env_value
 from .models import SystemSettings
+from .themes import THEME_CHOICES
 from .time_zones import time_zone_choices
 
 
 class SystemSettingsAdminForm(forms.ModelForm):
+    app_theme = forms.ChoiceField(
+        choices=THEME_CHOICES,
+        help_text="Choose the HolyFHIR branding assets used by the local app.",
+    )
+
     time_zone = forms.ChoiceField(
         choices=time_zone_choices,
         help_text=(
@@ -27,6 +33,13 @@ class SystemSettingsAdminForm(forms.ModelForm):
 class SystemSettingsAdmin(admin.ModelAdmin):
     form = SystemSettingsAdminForm
     fieldsets = (
+        (
+            "Theme",
+            {
+                "fields": ("app_theme",),
+                "description": "Choose the default HolyFHIR look for this local app.",
+            },
+        ),
         (
             "Local time",
             {
