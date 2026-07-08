@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve HolyFHIR Personal EMR.
+Thanks for helping improve HolyFHIR Family Health Records.
 
 Because this project deals with health records, please be especially careful with privacy and security. Do not commit, upload, paste, screenshot, or attach real personal health information.
 

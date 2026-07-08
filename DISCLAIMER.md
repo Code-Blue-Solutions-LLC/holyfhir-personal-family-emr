@@ -1,6 +1,6 @@
 # Disclaimer
 
-HolyFHIR Personal EMR is free, open-source software for organizing personal health records.
+HolyFHIR Family Health Records is free, open-source software for organizing personal health records.
 
 It is not medical advice, a medical device, a certified EHR or EMR system, or a substitute for care from a licensed clinician. Using HolyFHIR does not create a doctor-patient, clinician-patient, professional, fiduciary, or support relationship. Do not use HolyFHIR to diagnose, treat, prevent, or manage any disease or medical condition without consulting qualified medical professionals.
 

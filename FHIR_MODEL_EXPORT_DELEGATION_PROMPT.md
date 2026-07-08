@@ -1,6 +1,6 @@
 # Local LLM Task: Extend Django Model -> FHIR Export Serializers
 
-We are working in a Django personal EMR/FHIR app.
+We are working in a Django personal health record/FHIR app.
 
 ## Goal
 Continue implementing real Django model to FHIR JSON export serializers.

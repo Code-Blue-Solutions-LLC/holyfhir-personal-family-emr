@@ -1,6 +1,6 @@
 # Security Policy
 
-HolyFHIR Personal EMR handles sensitive health information. Please report security issues privately and do not include personal health information, real medical records, database files, recovery keys, passwords, access tokens, logs with secrets, screenshots with identifiable information, or portal exports in public issues, pull requests, discussions, or commits.
+HolyFHIR Family Health Records handles sensitive health information. Please report security issues privately and do not include personal health information, real records, database files, recovery keys, passwords, access tokens, logs with secrets, screenshots with identifiable information, or portal exports in public issues, pull requests, discussions, or commits.
 
 ## Reporting A Vulnerability
 

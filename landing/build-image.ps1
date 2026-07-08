@@ -1,7 +1,7 @@
 param(
-    [string]$ImageName = "personal-emr-landing",
+    [string]$ImageName = "family-health-records-landing",
     [string]$Tag = "local",
-    [string]$OutputFile = "personal-emr-landing.tar",
+    [string]$OutputFile = "family-health-records-landing.tar",
     [switch]$NoCache
 )
 

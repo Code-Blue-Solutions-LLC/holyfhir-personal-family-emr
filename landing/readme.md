@@ -1,6 +1,6 @@
-im just putting these tar files on my server, importing them into docker 
+im just putting these tar files on my server, importing them into docker
 
-docker load -i personal-emr-landing.tar
+docker load -i family-health-records-landing.tar
 
 go to /var/www/holyfhir.com
 

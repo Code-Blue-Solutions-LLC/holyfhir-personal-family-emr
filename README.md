@@ -1,6 +1,6 @@
-# HolyFHIR Personal Family EMR
+# HolyFHIR Family Health Records
 
-HolyFHIR is a local, offline-first health-record organizer for people who want to keep a personal copy of their medical information.
+HolyFHIR Family Health Records is a private, local-first health record organizer for your family.
 
 It is meant to help you organize things like patients, medications, allergies, conditions, documents, visits, and imported FHIR records from Epic's MyChart. The app runs on your computer and does not require a cloud account.
 
@@ -8,9 +8,9 @@ HolyFHIR is licensed as free and open-source software under the MIT License. You
 
 HolyFHIR includes models and browsing tools for many FHIR resource types, and its current importer maps a smaller supported subset. FHIR files vary by source, profile, version, and export quality, so imports may be incomplete, unsupported, or require review.
 
-This project is an early personal recordkeeping tool for people who want more local control over copies of their health information.
+This project is an early personal health record tool for people who want more local control over copies of their health information.
 
-![HolyFHIR Personal Family EMR screenshot](docs/images/screenshot.png)
+![HolyFHIR Family Health Records screenshot](docs/images/screenshot.png)
 
 ## Plain-English Summary
 
@@ -33,9 +33,9 @@ Download the latest Windows installer from the [GitHub Releases page](https://gi
 
 ## A Friendly Warning
 
-HolyFHIR is early software. It is not a certified medical record system and should not be your only copy of important health information.
+HolyFHIR is early software. It is not a certified EMR/EHR system and should not be your only copy of important health information.
 
-Please treat it like a personal organizer for medical records, not as a replacement for your doctor, patient portal, pharmacy records, or official chart.
+Please treat it like a personal health record organizer, not as a replacement for your doctor, patient portal, pharmacy records, or official chart.
 
 HolyFHIR is not medical advice, not a medical device, and not intended for diagnosis, treatment, emergencies, clinical decision support, or medication safety checking. Imported data may be incomplete or incorrect, so always verify important information against official sources.
 
@@ -51,7 +51,7 @@ Contributions are welcome, but sample data, test fixtures, screenshots, and bug 
 
 ## License
 
-HolyFHIR Personal EMR is licensed under the MIT License. See [LICENSE](LICENSE).
+HolyFHIR Family Health Records is licensed under the MIT License. See [LICENSE](LICENSE).
 
 This software is provided as-is, without warranty of any kind.
 
@@ -61,7 +61,7 @@ If someone sent you a HolyFHIR installer:
 
 1. Download the Windows setup `.exe` from the [latest release](https://github.com/Code-Blue-Solutions-LLC/holyfhir-personal-family-emr/releases/latest).
 2. Run the installer.
-3. Open **HolyFHIR Personal EMR**.
+3. Open **HolyFHIR Family Health Records**.
 4. Create your first system user.
 5. Save your password and recovery key somewhere safe.
 
@@ -70,7 +70,7 @@ Windows may warn you because the installer is not code-signed yet. That warning 
 Do not delete this folder unless you mean to remove local HolyFHIR data:
 
 ```text
-C:\Users\<you>\AppData\Local\HolyFHIR Personal EMR
+C:\Users\<you>\AppData\Local\HolyFHIR Family Health Records
 ```
 
 Useful files in that folder:
@@ -89,7 +89,7 @@ Useful files in that folder:
 - Immunizations
 - Vitals and lab results
 - Visits, such as office visits or hospital stays
-- Clinical documents, such as PDFs and reports
+- Health documents, such as PDFs and reports
 - Imported FHIR resources
 
 On each patient profile, HolyFHIR shows related conditions, allergies, and medications so the most important context is easy to find.
@@ -323,6 +323,6 @@ Release-tag builds upload the NSIS installer artifact and attach it to a draft G
 
 ## Medical Date Handling
 
-HolyFHIR stores calendar-only clinical facts, such as date of birth or medication start date, as dates. Exact moments, such as imports, lockouts, encounters, and timed observations, use timezone-aware datetimes.
+HolyFHIR stores calendar-only health record facts, such as date of birth or medication start date, as dates. Exact moments, such as imports, lockouts, encounters, and timed observations, use timezone-aware datetimes.
 
 That distinction matters because medical dates should not move to the previous or next day because of timezone conversion.

@@ -156,9 +156,9 @@ HOLYFHIR_LOGIN_LOCKOUT_SECONDS = 15 * 60
 
 JAZZMIN_SETTINGS = {
     # title of the window (Will default to current_admin_site.site_title if absent or None)
-    "site_title": "HolyFHIR Personal EMR",
-    "site_header": "HolyFHIR Personal EMR",
-    "site_brand": "HolyFHIR Personal EMR",
+    "site_title": "HolyFHIR Family Health Records",
+    "site_header": "HolyFHIR Family Health Records",
+    "site_brand": "HolyFHIR",
     "site_logo": None,  # e.g. "my_app/static/images/logo.png"
     "custom_css": "css/admin_custom.css",
     "custom_js": "js/admin_custom.js",

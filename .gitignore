@@ -67,6 +67,7 @@ src-tauri/gen/
 dist/
 build/
 landing/personal-emr-landing.tar
+landing/family-health-records-landing.tar
 *.msi
 *.exe
 *.dmg

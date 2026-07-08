@@ -22,7 +22,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog="HolyFHIRBackend",
-        description="Bundled Django command runner for HolyFHIR Personal EMR.",
+        description="Bundled Django command runner for HolyFHIR Family Health Records.",
     )
     parser.add_argument(
         "--project-root",

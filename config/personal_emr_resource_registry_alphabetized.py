@@ -1,11 +1,11 @@
-"""Personal EMR resource registry for HolyFHIR admin.
+"""Personal health record resource registry for HolyFHIR admin.
 
 Drop this into something like clinical/personal_emr_resource_registry.py.
 Use it to power the human-friendly "All Clinical Resources" page.
 
 This is intentionally a curated subset of the full FHIR Explorer. The full
 FHIR Explorer can stay exhaustive, while this page focuses on resources a
-family/personal EMR user is likely to understand and use.
+family health records user is likely to understand and use.
 """
 
 from django.apps import apps
@@ -683,7 +683,7 @@ def build_personal_emr_resource_sections():
                     "count_label": "record",
                     "has_model": has_model,
                     "has_admin_url": has_admin_url,
-                    "support_status": "Personal EMR",
+                    "support_status": "Family Health Records",
                 }
             )
 
