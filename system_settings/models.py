@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from config.branding import APP_SHORT_NAME
 
 from .themes import DEFAULT_THEME, THEME_CHOICES, normalize_theme_key
 
@@ -24,7 +25,7 @@ class SystemSettings(models.Model):
         max_length=32,
         choices=THEME_CHOICES,
         default=DEFAULT_THEME,
-        help_text="Controls FamilyChartVault branding assets such as the logo and favicon.",
+        help_text=f"Controls {APP_SHORT_NAME} branding assets such as the logo and favicon.",
     )
     app_lock_enabled = models.BooleanField(
         "Require sign-in and enable lock screen",

@@ -1,10 +1,11 @@
 from django.core.management.base import BaseCommand
+from config.branding import APP_SHORT_NAME
 
 from patients.models import LoginLockout
 
 
 class Command(BaseCommand):
-    help = "Clear local FamilyChartVault login lockout counters."
+    help = f"Clear local {APP_SHORT_NAME} login lockout counters."
 
     def add_arguments(self, parser):
         parser.add_argument(

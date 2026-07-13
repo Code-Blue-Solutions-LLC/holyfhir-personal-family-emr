@@ -21,8 +21,8 @@ def main():
     configure_logging()
 
     parser = argparse.ArgumentParser(
-        prog="FamilyChartVaultBackend",
-        description="Bundled Django command runner for FamilyChartVault.",
+        prog="HolyFHIRBackend",
+        description="Bundled Django command runner for HolyFHIR Family Health Records.",
     )
     parser.add_argument(
         "--project-root",

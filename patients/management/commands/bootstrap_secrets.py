@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.core.management.utils import get_random_secret_key
 
+from config.branding import APP_SHORT_NAME
 from config.env import parse_env_file
 from config.file_backups import backup_existing_file
 
@@ -151,7 +152,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.ERROR(
-                "DANGER: You are about to rotate local FamilyChartVault secrets."
+                f"DANGER: You are about to rotate local {APP_SHORT_NAME} secrets."
             )
         )
         self.stdout.write(
@@ -171,7 +172,7 @@ class Command(BaseCommand):
 
     def _write_env_file(self, env_path, example_path, example_values, values):
         lines = [
-            "# Local FamilyChartVault settings.",
+            f"# Local {APP_SHORT_NAME} settings.",
             f"# Generated from {example_path.name}. Do not commit this file.",
             "",
         ]

@@ -1,0 +1,6 @@
+import os
+
+APP_NAME = os.getenv("HOLYFHIR_APP_NAME", "HolyFHIR Family Health Records")
+APP_SHORT_NAME = os.getenv("HOLYFHIR_APP_SHORT_NAME", "HolyFHIR")
+APP_STORAGE_NAME = os.getenv("HOLYFHIR_APP_STORAGE_NAME", APP_NAME)
+APP_BACKEND_NAME = os.getenv("HOLYFHIR_APP_BACKEND_NAME", "HolyFHIRBackend")

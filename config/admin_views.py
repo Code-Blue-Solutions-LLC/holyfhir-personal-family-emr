@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
 from django.shortcuts import render
 from django.urls import reverse
+from config.branding import APP_SHORT_NAME
 from .fhir_explorer_registry import build_fhir_explorer_sections
 from .personal_emr_resource_registry_alphabetized import (
     build_personal_emr_resource_sections,
@@ -231,7 +232,7 @@ def recovery_key_generate(request):
 
         messages.warning(
             request,
-            "Save this recovery key now. FamilyChartVault cannot show it again.",
+            f"Save this recovery key now. {APP_SHORT_NAME} cannot show it again.",
         )
         return render(
             request,
@@ -1857,7 +1858,7 @@ def fhir_interop_hub(request):
         },
         {
             "title": "Get Records from MyChart",
-            "description": "Follow the MyChart download guide, then upload the ZIP or FHIR JSON into FamilyChartVault.",
+            "description": f"Follow the MyChart download guide, then upload the ZIP or FHIR JSON into {APP_SHORT_NAME}.",
             "url": reverse("fhir_import"),
             "icon": "fas fa-question-circle",
         },

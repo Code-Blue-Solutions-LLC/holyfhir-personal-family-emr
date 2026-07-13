@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 
+from config.branding import APP_NAME, APP_SHORT_NAME
 from config.database import build_default_database_config, env_flag
 from config.env import load_env
 
@@ -45,7 +46,7 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS = [
     "jazzmin",
     "django.contrib.admin",
-    "config.apps.FamilyChartVaultAuthConfig",
+    "config.apps.HolyFHIRAuthConfig",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
@@ -156,9 +157,9 @@ HOLYFHIR_LOGIN_LOCKOUT_SECONDS = 15 * 60
 
 JAZZMIN_SETTINGS = {
     # title of the window (Will default to current_admin_site.site_title if absent or None)
-    "site_title": "FamilyChartVault",
-    "site_header": "FamilyChartVault",
-    "site_brand": "FamilyChartVault",
+    "site_title": APP_NAME,
+    "site_header": APP_NAME,
+    "site_brand": APP_SHORT_NAME,
     "site_logo": None,  # e.g. "my_app/static/images/logo.png"
     "custom_css": "css/admin_custom.css",
     "custom_js": "js/admin_custom.js",

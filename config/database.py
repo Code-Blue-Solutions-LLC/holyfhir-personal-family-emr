@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from config.branding import APP_SHORT_NAME
 
 
 DEFAULT_DATABASE_TIMEOUT = 20.0
@@ -44,7 +45,7 @@ def build_default_database_config(base_dir: Path):
 
     if not encryption_key and not is_bootstrap_command:
         raise ImproperlyConfigured(
-            "DATABASE_ENCRYPTION_KEY is required. FamilyChartVault stores health record data and database encryption is always enforced."
+            f"DATABASE_ENCRYPTION_KEY is required. {APP_SHORT_NAME} stores health record data and database encryption is always enforced."
         )
 
     options = {

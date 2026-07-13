@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from config.branding import APP_SHORT_NAME
 
 from .models import SystemSettings
 
@@ -77,6 +78,6 @@ def unlock_app(request):
                 request, "Too many unlock attempts. Wait a few minutes and try again."
             )
         else:
-            messages.error(request, "That password did not unlock FamilyChartVault.")
+            messages.error(request, f"That password did not unlock {APP_SHORT_NAME}.")
 
     return render(request, "unlock.html", {"locked_out": False})

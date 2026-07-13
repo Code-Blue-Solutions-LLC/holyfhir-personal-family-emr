@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
 from django.utils import timezone
+from config.branding import APP_SHORT_NAME
 
 from .env_sync import update_env_value
 from .models import SystemSettings
@@ -13,7 +14,7 @@ from .time_zones import time_zone_choices
 class SystemSettingsAdminForm(forms.ModelForm):
     app_theme = forms.ChoiceField(
         choices=THEME_CHOICES,
-        help_text="Choose the FamilyChartVault branding assets used by the local app.",
+        help_text=f"Choose the {APP_SHORT_NAME} branding assets used by the local app.",
     )
 
     time_zone = forms.ChoiceField(
@@ -37,7 +38,7 @@ class SystemSettingsAdmin(admin.ModelAdmin):
             "Theme",
             {
                 "fields": ("app_theme",),
-                "description": "Choose the default FamilyChartVault look for this local app.",
+                "description": f"Choose the default {APP_SHORT_NAME} look for this local app.",
             },
         ),
         (
@@ -45,7 +46,7 @@ class SystemSettingsAdmin(admin.ModelAdmin):
             {
                 "fields": ("time_zone",),
                 "description": (
-                    "FamilyChartVault stores medical calendar dates as dates. This setting controls how exact timestamps "
+                    f"{APP_SHORT_NAME} stores medical calendar dates as dates. This setting controls how exact timestamps "
                     "are displayed, such as observations, encounters, imports, and security events."
                 ),
             },

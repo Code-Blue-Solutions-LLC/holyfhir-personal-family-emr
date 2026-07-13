@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from config.branding import APP_SHORT_NAME
 
 from clinical.models import Condition, Observation
 from documents.models import ClinicalDocument
@@ -29,7 +30,7 @@ class SettingsBackupPageTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Manual Restore")
-        self.assertContains(response, "Close FamilyChartVault completely")
+        self.assertContains(response, f"Close {APP_SHORT_NAME} completely")
         self.assertContains(response, "FHIR Import Database Copies")
 
     def test_clinical_care_team_directory_lists_directory_sections(self):

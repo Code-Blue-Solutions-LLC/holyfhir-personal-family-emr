@@ -23,7 +23,7 @@
   <div class="container-fluid fhir-explorer">
     <h1>FHIR Explorer</h1>
     <p class="text-muted">
-      Browse first-class FamilyChartVault resources by category.
+      Browse first-class {{ holyfhir_app_short_name }} resources by category.
     </p>
 
     <div class="fhir-stats">
@@ -86,10 +86,10 @@
 </div>
 
 <script>
-  const searchInput = document.getElementById("fhirSearch");
-  const sectionFilter = document.getElementById("fhirSectionFilter");
-  const visibleCount = document.getElementById("visibleCount");
-  const emptyMessage = document.getElementById("fhirEmpty");
+  const searchInput = document.getElementryId("fhirSearch");
+  const sectionFilter = document.getElementryId("fhirSectionFilter");
+  const visibleCount = document.getElementryId("visibleCount");
+  const emptyMessage = document.getElementryId("fhirEmpty");
 
   function applyFHIRFilters() {
     const query = searchInput.value.trim().toLowerCase();

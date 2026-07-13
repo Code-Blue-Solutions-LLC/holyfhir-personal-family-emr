@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model, login
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from config.branding import APP_SHORT_NAME
 
 from patients.forms import RecoveryKeyPasswordResetForm, RecoveryKeySetPasswordForm
 from patients.recovery import generate_recovery_key, hash_recovery_key
@@ -11,7 +12,7 @@ from patients.recovery import generate_recovery_key, hash_recovery_key
 
 class FirstRunOwnerForm(UserCreationForm):
     confirm_no_password_recovery = forms.BooleanField(
-        label="I understand FamilyChartVault cannot recover this password for me.",
+        label=f"I understand {APP_SHORT_NAME} cannot recover this password for me.",
         required=True,
         error_messages={
             "required": "Please confirm that you understand there is no password recovery yet.",
