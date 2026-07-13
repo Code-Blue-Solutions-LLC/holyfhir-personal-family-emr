@@ -344,6 +344,13 @@ This app handles health data. Treat go-live as a staged launch: first private/lo
 - [ ] Add release notes/changelog process
 - [ ] Add crash/error report strategy that does not leak PHI
 - [ ] Add "export all data before uninstall" instructions
+- [ ] Before final naming/release, update remaining static app-name references:
+  - [ ] `README.md`, `DISCLAIMER.md`, `SECURITY.md`, `TERMS_OF_USE.md`, `CONTRIBUTING.md`
+  - [ ] `landing/index.html`
+  - [ ] `desktop/index.html` and `desktop/startup-error.html`
+  - [ ] `src-tauri/tauri.conf.json` `productName` and `src-tauri/Cargo.toml` description/authors
+  - [ ] Asset filenames/paths if replacing `HolyFHIR_*` theme files
+  - [ ] Internal compatibility names only if intentionally renaming packages/build outputs: `HolyFHIRAuthConfig`, `HolyFHIRBackend`, database/log filenames, repo/package identifiers
 
 ## 14. Documentation
 
