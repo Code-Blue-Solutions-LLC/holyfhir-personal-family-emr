@@ -150,9 +150,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(
-            self.style.ERROR(
-                "DANGER: You are about to rotate local FamilyChartVault secrets."
-            )
+            self.style.ERROR("DANGER: You are about to rotate local HolyFHIR secrets.")
         )
         self.stdout.write(
             self.style.ERROR(
@@ -171,7 +169,7 @@ class Command(BaseCommand):
 
     def _write_env_file(self, env_path, example_path, example_values, values):
         lines = [
-            "# Local FamilyChartVault settings.",
+            "# Local HolyFHIR settings.",
             f"# Generated from {example_path.name}. Do not commit this file.",
             "",
         ]

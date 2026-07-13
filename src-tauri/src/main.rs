@@ -176,12 +176,12 @@ fn bundled_backend_executable(paths: &RuntimePaths) -> PathBuf {
             .project_root
             .join("desktop-backend")
             .join("dist")
-            .join("FamilyChartVaultBackend")
-            .join("FamilyChartVaultBackend.exe"),
+            .join("HolyFHIRBackend")
+            .join("HolyFHIRBackend.exe"),
         paths
             .project_root
-            .join("FamilyChartVaultBackend")
-            .join("FamilyChartVaultBackend.exe"),
+            .join("HolyFHIRBackend")
+            .join("HolyFHIRBackend.exe"),
     ];
 
     candidates
@@ -193,8 +193,8 @@ fn bundled_backend_executable(paths: &RuntimePaths) -> PathBuf {
                 .project_root
                 .join("desktop-backend")
                 .join("dist")
-                .join("FamilyChartVaultBackend")
-                .join("FamilyChartVaultBackend.exe")
+                .join("HolyFHIRBackend")
+                .join("HolyFHIRBackend.exe")
         })
 }
 
@@ -204,12 +204,12 @@ fn bundled_backend_candidates(paths: &RuntimePaths) -> String {
             .project_root
             .join("desktop-backend")
             .join("dist")
-            .join("FamilyChartVaultBackend")
-            .join("FamilyChartVaultBackend.exe"),
+            .join("HolyFHIRBackend")
+            .join("HolyFHIRBackend.exe"),
         paths
         .project_root
-        .join("FamilyChartVaultBackend")
-            .join("FamilyChartVaultBackend.exe"),
+        .join("HolyFHIRBackend")
+            .join("HolyFHIRBackend.exe"),
     ]
     .iter()
     .map(|path| format!("{path:?}"))
@@ -355,12 +355,12 @@ fn show_startup_error(app: &mut tauri::App, paths: Option<&RuntimePaths>, messag
     show_app_window(
         app,
         WebviewUrl::App(Path::new("startup-error.html").into()),
-        "FamilyChartVault Startup Help",
+        "HolyFHIR Startup Help",
     )
 }
 
 fn main() {
-    early_log("FamilyChartVault desktop process started");
+    early_log("HolyFHIR desktop process started");
 
     tauri::Builder::default()
         .manage(DjangoProcess(Mutex::new(None)))
@@ -376,7 +376,7 @@ fn main() {
             append_log(
                 &paths,
                 format!(
-                    "starting FamilyChartVault desktop; app data directory: {:?}",
+                    "starting HolyFHIR desktop; app data directory: {:?}",
                     paths.app_data_dir
                 ),
             );
@@ -410,7 +410,7 @@ fn main() {
             show_app_window(
                 app,
                 WebviewUrl::External(format!("http://{HOST}:{PORT}/").parse().unwrap()),
-                "FamilyChartVault",
+                "HolyFHIR Family Health Records",
             )?;
 
             Ok(())
@@ -429,5 +429,5 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running FamilyChartVault desktop app");
+        .expect("error while running HolyFHIR desktop app");
 }
